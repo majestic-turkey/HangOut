@@ -8,7 +8,7 @@ const getRandomWord = async () => {
     try {
         const response = await fetch(API_URL);
         const data = await response.json();
-        const filteredWords = data.filter(word => word.length >= 5 && word.length <= 10);
+        const filteredWords = data.filter((word: string) => word.length >= 5 && word.length <= 10);
         if (filteredWords.length === 0) {
             throw new Error('No suitable words found');
         }

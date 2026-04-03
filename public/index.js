@@ -10,7 +10,7 @@ const hiddenWord = document.getElementById('hiddenword');
 
 let word;
 let maskedWord = [];
-
+// TODO: Move this logic to the backend (gameManager.ts)
 socket.on('keypress', ({ id, key }) => {
     console.log(`User ${id} pressed key: ${key}`);
 
