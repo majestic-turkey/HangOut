@@ -4,6 +4,7 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
+import { getRandomWord } from './wordService.js';
 
 // Load environment variables from .env file and set constants
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -15,12 +16,15 @@ const io = new Server(server, {
     }
 });
 
+const randomWord = await getRandomWord();
+
 // Serve static elements
 app.use(express.static('public'));
 
 // On client connection
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
+    console.log('A user connected');
+    io.emit('new_word', randomWord);
 
     socket.on('disconnect', () => {
         console.log('A user disconnected:', socket.id);
