@@ -4,7 +4,8 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import { getRandomWord } from './wordService.js';
+import { initDB, saveGameState } from './src/db';
+import GameManager from './src/gameManager';
 
 // Load environment variables from .env file and set constants
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -16,15 +17,15 @@ const io = new Server(server, {
     }
 });
 
-const randomWord = await getRandomWord();
-
 // Serve static elements
 app.use(express.static('public'));
 
+// Initialize the database
+await initDB();
+
 // On client connection
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
     console.log('A user connected');
-    io.emit('new_word', randomWord);
 
     socket.on('disconnect', () => {
         console.log('A user disconnected:', socket.id);
@@ -32,8 +33,21 @@ io.on('connection', (socket) => {
 
     socket.on('keypress', (key) => {
         console.log(`Key pressed by ${socket.id}: ${key}`);
-        // Broadcast the keypress to all clients
         io.emit('keypress', { id: socket.id, key });
+    });
+
+    socket.on('new_game', async () => {
+        console.log(`New game started by ${socket.id}`);
+        try {
+            // Create a new game instance
+            const gameManager = new GameManager();
+            await gameManager.startNewGame();
+
+            // Save the game state to the database
+            await saveGameState(gameManager);
+        } catch (error) {
+            console.error('Error starting new game:', error);
+        }
     });
 
 });

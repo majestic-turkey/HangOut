@@ -25,7 +25,7 @@ npm install
 ```bash
 # Start the application
 npm start (for nodemon)
-npx ts-node server.js (if no nodemon)
+npx ts-node server.ts (if no nodemon)
 ```
 
 ## License
