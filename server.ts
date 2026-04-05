@@ -67,6 +67,7 @@ io.on('connection', async (socket) => {
 
     // Listen for join game requests from clients
     socket.on('join_game', (gameId, ack) => {
+        console.log(`User ${socket.id} is trying to join game ${gameId}`);
         const game = games.get(gameId);
         if (!game) return ack?.({ ok: false, message: "Game not found" });
 
@@ -86,6 +87,7 @@ io.on('connection', async (socket) => {
 
     // Listen for guesses from clients
     socket.on('keypress', (key) => {
+        console.log(`User ${socket.id} pressed key ${key}`);
         // Grab the game info
         const gameId = socket.data.gameId;
         const game = games.get(gameId);
@@ -96,12 +98,14 @@ io.on('connection', async (socket) => {
         // Make the guess and update the game state
         const changed = game.manager.guessLetter(key);
         if (!changed) return;
+        console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
         io.to(gameId).emit("masked_word", {
             maskedWord: game.manager.getMaskedWord()
         });
 
         // Check if the game is over
         if (game.manager.gameWon || game.manager.attempts >= game.manager.maxAttempts) {
+            console.log(`Game over for game ${gameId}. Won: ${game.manager.gameWon}, Word: ${game.manager.word}`);
             io.to(gameId).emit("game_over", {
                 gameWon: game.manager.gameWon,
                 word: game.manager.word
@@ -111,7 +115,7 @@ io.on('connection', async (socket) => {
 
     // Listen for client disconnects
     socket.on('disconnect', () => {
-        console.log('A user disconnected:', socket.id);
+        console.log(`User ${socket.id} disconnected`);
         const gameId = socket.data.gameId;
         const game = games.get(gameId);
 
