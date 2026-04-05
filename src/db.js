@@ -33,9 +33,9 @@ export async function saveGameState(gameState) {
 }
 
 export async function initDB() {
+    const db = await openDB();
     try {
         console.log('Setting up database...');
-        const db = await openDB();
 
         // Create games table
         await db.exec(`CREATE TABLE IF NOT EXISTS games (
