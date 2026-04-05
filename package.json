@@ -20,10 +20,12 @@
     "type": "module",
     "main": "server.ts",
     "scripts": {
+        "dev": "npm start",
         "start": "npx nodemon server.ts"
     },
     "dependencies": {
         "express": "^4.22.1",
+        "nanoid": "^5.1.7",
         "socket.io": "^4.8.3",
         "sqlite": "^5.1.1",
         "sqlite3": "^6.0.1"

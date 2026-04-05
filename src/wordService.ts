@@ -4,20 +4,39 @@
 
 const API_URL = 'https://random-word-api.herokuapp.com/word?number=20';
 
-const getRandomWord = async () => {
+const FALLBACK_WORDS = [
+    'socket',
+    'hangman',
+    'program',
+    'network',
+    'puzzle',
+    'victory',
+    'browser',
+    'lobby',
+    'server',
+    'letter'
+];
+
+const getRandomWord = async (): Promise<string> => {
     try {
+        console.log('Fetching random word from API...');
         const response = await fetch(API_URL);
+        if (!response.ok) {
+            throw new Error(`Word API request failed with status ${response.status}`);
+        }
         const data = await response.json();
         const filteredWords = data.filter((word: string) => word.length >= 5 && word.length <= 10);
         if (filteredWords.length === 0) {
             throw new Error('No suitable words found');
         }
+        console.log('Random word fetched:', filteredWords);
         const randomIndex = Math.floor(Math.random() * filteredWords.length);
         return filteredWords[randomIndex];
 
     } catch (error) {
         console.error('Error fetching random word:', error);
-        return null;
+        const fallbackIndex = Math.floor(Math.random() * FALLBACK_WORDS.length);
+        return FALLBACK_WORDS[fallbackIndex];
     }
 };
 

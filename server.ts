@@ -3,9 +3,11 @@
 */
 import express from 'express';
 import http from 'http';
+import { nanoid } from 'nanoid';
 import { Server } from 'socket.io';
 import { initDB } from './src/db.js';
 import GameManager from './src/gameManager.ts';
+import { saveGameState } from './src/db.js';
 import type { GameSession } from './src/types.ts';
 
 // Load environment variables from .env file and set constants
@@ -23,10 +25,11 @@ const games = new Map<string, GameSession>();
 app.use(express.static('public'));
 
 // Initialize the database
-const db = await initDB();
+await initDB();
 
+// Generate a unique 8-character game ID
 function createGameId() {
-    return Math.random().toString(36).slice(2, 8).toUpperCase();
+    return nanoid(8);
 }
 
 // On client connection
@@ -39,8 +42,12 @@ io.on('connection', async (socket) => {
         try {
 
             // Initialize a new game
-            const gameId = createGameId();
+            let gameId = createGameId();
             const gameManager = new GameManager();
+            if (games.has(gameId)) {
+                console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
+                gameId = createGameId();
+            }
             await gameManager.startNewGame(gameId);
 
             // Add game to registry of games
@@ -96,7 +103,7 @@ io.on('connection', async (socket) => {
         if (!game || !gameId || !/^[a-z]$/i.test(key)) return;
 
         // Make the guess and update the game state
-        const changed = game.manager.guessLetter(key);
+        const changed = game.manager.guessLetter(key.toLowerCase().trim());
         if (!changed) return;
         console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
         io.to(gameId).emit("masked_word", {
@@ -110,6 +117,8 @@ io.on('connection', async (socket) => {
                 gameWon: game.manager.gameWon,
                 word: game.manager.word
             });
+            game.manager.winnerId = game.manager.gameWon ? socket.id : undefined;
+            saveGameState(game.manager);
         }
     })
 
@@ -123,6 +132,7 @@ io.on('connection', async (socket) => {
 
         // Remove the disconnected player from the game's player list
         game.players.delete(socket.id);
+        
         // If no players remain in the game, remove the game from the registry
         if (game.players.size === 0) {
             games.delete(gameId);
