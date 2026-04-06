@@ -2,7 +2,7 @@
  * Interact with word API to fetch random words for the Hangman game
  */
 
-const API_URL = 'https://random-word-api.herokuapp.com/word?number=20';
+const API_URL = 'https://random-words-api.kushcreates.com/api?language=en&length=7&type=lowercase&words=1';
 
 const FALLBACK_WORDS = [
     'socket',
@@ -25,7 +25,7 @@ const getRandomWord = async (): Promise<string> => {
             throw new Error(`Word API request failed with status ${response.status}`);
         }
         const data = await response.json();
-        const filteredWords = data.filter((word: string) => word.length >= 5 && word.length <= 10);
+        const filteredWords = data.word;
         if (filteredWords.length === 0) {
             throw new Error('No suitable words found');
         }
