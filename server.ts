@@ -9,8 +9,10 @@ import { initDB } from './src/db.js';
 import GameManager from './src/gameManager.ts';
 import { saveGameState } from './src/db.js';
 import type { GameSession } from './src/types.ts';
+import dotenv from 'dotenv';
 
 // Load environment variables from .env file and set constants
+dotenv.config();
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const app = express();
 const server = http.createServer(app);
@@ -23,7 +25,7 @@ const io = new Server(server, {
         skipMiddlewares: true // Skip any middlewares when recovering a connection
     }
 });
-const games = new Map<string, GameSession>();
+const games = new Map<string, GameSession>(); // In-memory registry of active games, keyed by game ID
 
 // Serve static elements
 app.use(express.static('public'));
@@ -41,14 +43,13 @@ io.on('connection', async (socket) => {
     console.log('A user connected:', socket.id);
 
     // Listen for new game requests from clients
-    socket.on('new_game', async () => {
+    socket.on('new_game', async (maxAttempts?: number) => {
         console.log(`New game started by ${socket.id}`);
         try {
-
             // Initialize a new game
             let gameId = createGameId();
-            const gameManager = new GameManager();
-            if (games.has(gameId)) {
+            const gameManager = new GameManager(maxAttempts || 8);
+            while (games.has(gameId)) {
                 console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
                 gameId = createGameId();
             }
@@ -106,9 +107,9 @@ io.on('connection', async (socket) => {
         // Validate that the game exists and that the key pressed is a valid letter
         if (!game || !gameId || !/^[a-z]$/i.test(key)) return;
 
-        // Rate limit guesses to prevent spamming every 3 seconds
+        // Rate limit guesses to prevent spamming every 2 seconds
         const now = Date.now();
-        if (socket.data.lastGuessTime && now - socket.data.lastGuessTime < 3000) {
+        if (socket.data.lastGuessTime && now - socket.data.lastGuessTime < 2000) {
             console.log(`User ${socket.id} is guessing too fast. Ignoring guess.`);
             return;
         }
@@ -121,13 +122,13 @@ io.on('connection', async (socket) => {
         }
 
         // Make the guess and update the game state
-        const changed = JSON.parse(game.manager.guessLetter(key.toLowerCase().trim()));
-        if (!changed.accepted) return; // If the guess was invalid, ignore it
+        const changedState = JSON.parse(game.manager.guessLetter(key.toLowerCase().trim()));
+        if (!changedState.accepted) return; // If the guess was invalid, ignore it
 
         console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
 
         // Broadcast the updated game state to all players in the game
-        io.to(gameId).emit("masked_word", changed);
+        io.to(gameId).emit("masked_word", changedState);
 
         // Check if the game is over
         if (game.manager.gameWon || game.manager.attempts >= game.manager.maxAttempts) {

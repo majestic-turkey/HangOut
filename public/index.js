@@ -10,12 +10,15 @@ newGameBtn.addEventListener('click', () => {
 });
 
 document.addEventListener('keydown', (event) => {
+    if (event.repeat) return; // Ignore repeated key presses
+    if (event.key.length !== 1 || !/[a-zA-Z]/.test(event.key)) return; // Only process single alphabetic characters
+
     newGameBtn.disabled = true;
     const key = event.key;
     socket.emit('keypress', key);
     setTimeout(() => {
         newGameBtn.disabled = false;
-    }, 3000); // Game is rate-limited to one guess every 3 seconds
+    }, 2000); // Game is rate-limited to one guess every 2 seconds
 });
 
 socket.on('masked_word', (data) => {

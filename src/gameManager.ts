@@ -7,16 +7,16 @@ import type { GameState } from './types.ts';
 import { saveGameState, createGame } from './db.js';
 
 export default class GameManager implements GameState {
-    word: string;
-    guessedLetters: Set<string>;
-    maxAttempts: number;
-    attempts: number;
-    gameWon: boolean;
-    winnerId?: string;
-    gameId: string;
-    wrongLetters: Set<string>;
+    word: string;                   // The word to be guessed
+    guessedLetters: Set<string>;    // Letters that have been guessed correctly
+    maxAttempts: number;            // Maximum number of wrong attempts allowed
+    attempts: number;               // Current number of wrong attempts
+    gameWon: boolean;               // Flag indicating if the game has been won
+    winnerId?: string;              // ID of the winner, if the game has been won
+    gameId: string;                 // Unique identifier for the game session
+    wrongLetters: Set<string>;      // Letters that have been guessed incorrectly
 
-    constructor(maxAttempts: number = 6) {
+    constructor(maxAttempts: number) {
         this.word = '';
         this.guessedLetters = new Set();
         this.wrongLetters = new Set();
@@ -29,7 +29,7 @@ export default class GameManager implements GameState {
 
     // Start a new game by fetching a random word and resetting the game state
     async startNewGame(id: string): Promise<void> {
-        const randomWord = await getRandomWord();
+        const randomWord = getRandomWord();
         if (randomWord) {
             this.word = randomWord.toLowerCase();
             this.guessedLetters.clear();
