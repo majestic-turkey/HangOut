@@ -127,7 +127,7 @@ io.on('connection', async (socket) => {
         console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
 
         // Broadcast the updated game state to all players in the game
-        io.to(gameId).emit("guess", changed);
+        io.to(gameId).emit("masked_word", changed);
 
         // Check if the game is over
         if (game.manager.gameWon || game.manager.attempts >= game.manager.maxAttempts) {

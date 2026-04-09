@@ -4,6 +4,7 @@
 
 import { getRandomWord } from './wordService.ts';
 import type { GameState } from './types.ts';
+import { saveGameState, createGame } from './db.js';
 
 export default class GameManager implements GameState {
     word: string;
@@ -38,6 +39,7 @@ export default class GameManager implements GameState {
             this.winnerId = undefined;
             this.gameId = id;
         }
+        await createGame(this.word, this.gameId);
     }
 
     // Mask the word by replacing unguessed letters with underscores
@@ -60,6 +62,9 @@ export default class GameManager implements GameState {
 
         // Check if the game has been won
         this.gameWon = this.word.split('').every((char) => this.guessedLetters.has(char));
+
+        // Save game state and return the result of the guess
+        saveGameState(this);
 
         return JSON.stringify({
             accepted: true,

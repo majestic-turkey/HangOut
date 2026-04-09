@@ -2,6 +2,8 @@
  * Interact with word API to fetch random words for the Hangman game
  */
 
+import words from './data/words.json' with { type: 'json' };
+
 const API_URL = 'https://random-words-api.kushcreates.com/api?language=en&length=7&type=lowercase&words=1';
 
 const FALLBACK_WORDS = [
@@ -17,7 +19,18 @@ const FALLBACK_WORDS = [
     'letter'
 ];
 
-const getRandomWord = async (): Promise<string> => {
+const getRandomWord = (length = 6): string => {
+    const filteredWords = words.filter(word => word.length === length);
+    if (filteredWords.length === 0) {
+        console.warn(`No words of length ${length} found in local list. Using fallback words.`);
+        const fallbackIndex = Math.floor(Math.random() * FALLBACK_WORDS.length);
+        return FALLBACK_WORDS[fallbackIndex];
+    }
+    const randomIndex = Math.floor(Math.random() * filteredWords.length);
+    return filteredWords[randomIndex];
+}
+
+/* const getRandomWord = async (): Promise<string> => {
     try {
         console.log('Fetching random word from API...');
         const response = await fetch(API_URL);
@@ -39,5 +52,6 @@ const getRandomWord = async (): Promise<string> => {
         return FALLBACK_WORDS[fallbackIndex];
     }
 };
+*/
 
 export { getRandomWord };
