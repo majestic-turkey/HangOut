@@ -17,6 +17,10 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "*"
+    },
+    connectionStateRecovery: {
+        maxDisconnectionDuration: 60000, // Allow reconnection within 60 seconds
+        skipMiddlewares: true // Skip any middlewares when recovering a connection
     }
 });
 const games = new Map<string, GameSession>();
@@ -102,13 +106,28 @@ io.on('connection', async (socket) => {
         // Validate that the game exists and that the key pressed is a valid letter
         if (!game || !gameId || !/^[a-z]$/i.test(key)) return;
 
+        // Rate limit guesses to prevent spamming every 3 seconds
+        const now = Date.now();
+        if (socket.data.lastGuessTime && now - socket.data.lastGuessTime < 3000) {
+            console.log(`User ${socket.id} is guessing too fast. Ignoring guess.`);
+            return;
+        }
+        socket.data.lastGuessTime = now;
+
+        // If the game is over, ignore any further guesses
+        if (game.manager.gameWon || game.manager.attempts >= game.manager.maxAttempts) {
+            console.log(`Game ${gameId} is already over. Ignoring guess.`);
+            return;
+        }
+
         // Make the guess and update the game state
-        const changed = game.manager.guessLetter(key.toLowerCase().trim());
-        if (!changed) return;
+        const changed = JSON.parse(game.manager.guessLetter(key.toLowerCase().trim()));
+        if (!changed.accepted) return; // If the guess was invalid, ignore it
+
         console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
-        io.to(gameId).emit("masked_word", {
-            maskedWord: game.manager.getMaskedWord()
-        });
+
+        // Broadcast the updated game state to all players in the game
+        io.to(gameId).emit("guess", changed);
 
         // Check if the game is over
         if (game.manager.gameWon || game.manager.attempts >= game.manager.maxAttempts) {

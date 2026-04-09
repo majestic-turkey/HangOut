@@ -13,10 +13,12 @@ export default class GameManager implements GameState {
     gameWon: boolean;
     winnerId?: string;
     gameId: string;
+    wrongLetters: Set<string>;
 
     constructor(maxAttempts: number = 6) {
         this.word = '';
         this.guessedLetters = new Set();
+        this.wrongLetters = new Set();
         this.maxAttempts = maxAttempts;
         this.attempts = 0;
         this.gameWon = false;
@@ -30,6 +32,7 @@ export default class GameManager implements GameState {
         if (randomWord) {
             this.word = randomWord.toLowerCase();
             this.guessedLetters.clear();
+            this.wrongLetters.clear();
             this.attempts = 0;
             this.gameWon = false;
             this.winnerId = undefined;
@@ -44,19 +47,27 @@ export default class GameManager implements GameState {
 
 
     // Process a letter guess, update game state accordingly, and return whether the guess was valid
-    guessLetter(letter: string): boolean {
+    guessLetter(letter: string): string {
         letter = letter.toLowerCase();
         if (this.guessedLetters.has(letter) || this.attempts >= this.maxAttempts) {
-            return false;
+            return JSON.stringify({ accepted: false, message: "Invalid guess or game over" });
         }
         this.guessedLetters.add(letter);
         if (!this.word.includes(letter)) {
+            this.wrongLetters.add(letter);
             this.attempts++;
         }
 
         // Check if the game has been won
         this.gameWon = this.word.split('').every((char) => this.guessedLetters.has(char));
 
-        return true;
+        return JSON.stringify({
+            accepted: true,
+            correct: this.word.includes(letter),
+            maskedWord: this.getMaskedWord(),
+            attemptsLeft: this.maxAttempts - this.attempts,
+            gameWon: this.gameWon,
+            newlyRevealedLetter: this.word.includes(letter) ? letter : undefined,
+         });
     }
 }

@@ -7,8 +7,10 @@ export interface GameState {
     winnerId?: string;
     gameId: string;
     getMaskedWord: () => string;
-    guessLetter: (key: string) => boolean;
-}
+    guessLetter: (key: string) => string;
+    wrongLetters: Set<string>;
+};
+
 
 export interface GameSession {
     id: string;
