@@ -49,7 +49,7 @@ export default class GameManager implements GameState {
 
 
     // Process a letter guess, update game state accordingly, and return whether the guess was valid
-    guessLetter(letter: string): string {
+    async guessLetter(letter: string): Promise<string> {
         letter = letter.toLowerCase();
         if (this.guessedLetters.has(letter) || this.attempts >= this.maxAttempts) {
             return JSON.stringify({ accepted: false, message: "Invalid guess or game over" });
@@ -64,7 +64,7 @@ export default class GameManager implements GameState {
         this.gameWon = this.word.split('').every((char) => this.guessedLetters.has(char));
 
         // Save game state and return the result of the guess
-        saveGameState(this);
+        await saveGameState(this);
 
         return JSON.stringify({
             accepted: true,

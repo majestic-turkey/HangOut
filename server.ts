@@ -41,13 +41,13 @@ io.on('connection', async (socket) => {
     console.log('A user connected:', socket.id);
 
     // Listen for new game requests from clients
-    socket.on('new_game', async ({ wordLength }, maxAttempts) => {
+    socket.on('new_game', async ({ wordLength }, maxAttempts = 6) => {
         console.log(`New game started by ${socket.id} with word length ${wordLength || 'default'}`);
         try {
 
             // Initialize a new game
             let gameId = createGameId();
-            const gameManager = new GameManager(maxAttempts = 6);
+            const gameManager = new GameManager(maxAttempts);
             if (games.has(gameId)) {
                 console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
                 gameId = createGameId();
@@ -97,7 +97,7 @@ io.on('connection', async (socket) => {
     })
 
     // Listen for guesses from clients
-    socket.on('keypress', (key) => {
+    socket.on('keypress', async (key) => {
         console.log(`User ${socket.id} pressed key ${key}`);
         // Grab the game info
         const gameId = socket.data.gameId;
@@ -106,9 +106,9 @@ io.on('connection', async (socket) => {
         // Validate that the game exists and that the key pressed is a valid letter
         if (!game || !gameId || !/^[a-z]$/i.test(key)) return;
 
-        // Rate limit guesses to prevent spamming every 3 seconds
+        // Rate limit guesses to prevent spamming every 2 seconds
         const now = Date.now();
-        if (socket.data.lastGuessTime && now - socket.data.lastGuessTime < 3000) {
+        if (socket.data.lastGuessTime && now - socket.data.lastGuessTime < 2000) {
             console.log(`User ${socket.id} is guessing too fast. Ignoring guess.`);
             return;
         }
@@ -121,7 +121,7 @@ io.on('connection', async (socket) => {
         }
 
         // Make the guess and update the game state
-        const changed = JSON.parse(game.manager.guessLetter(key.toLowerCase().trim()));
+        const changed = JSON.parse(await game.manager.guessLetter(key.toLowerCase().trim()));
         if (!changed.accepted) return; // If the guess was invalid, ignore it
 
         console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
@@ -137,7 +137,7 @@ io.on('connection', async (socket) => {
                 word: game.manager.word
             });
             game.manager.winnerId = game.manager.gameWon ? socket.id : undefined;
-            saveGameState(game.manager);
+            await saveGameState(game.manager);
         }
     })
 
@@ -147,7 +147,7 @@ io.on('connection', async (socket) => {
         const gameId = socket.data.gameId;
         const game = games.get(gameId);
 
-        if (!games || !game) return;
+        if (!game) return;
 
         // Remove the disconnected player from the game's player list
         game.players.delete(socket.id);
