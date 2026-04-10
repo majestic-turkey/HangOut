@@ -41,8 +41,8 @@ io.on('connection', async (socket) => {
     console.log('A user connected:', socket.id);
 
     // Listen for new game requests from clients
-    socket.on('new_game', async () => {
-        console.log(`New game started by ${socket.id}`);
+    socket.on('new_game', async ({ wordLength }) => {
+        console.log(`New game started by ${socket.id} with word length ${wordLength || 'default'}`);
         try {
 
             // Initialize a new game
@@ -52,7 +52,7 @@ io.on('connection', async (socket) => {
                 console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
                 gameId = createGameId();
             }
-            await gameManager.startNewGame(gameId);
+            await gameManager.startNewGame(gameId, wordLength);
 
             // Add game to registry of games
             games.set(gameId, {

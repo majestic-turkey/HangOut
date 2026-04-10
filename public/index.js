@@ -4,9 +4,11 @@ const socket = io();
 const output = document.getElementById('output');
 const hiddenWord = document.getElementById('hiddenword');
 const newGameBtn = document.getElementById('newGameBtn');
+const wordLengthInput = document.getElementById('word-length');
 
 newGameBtn.addEventListener('click', () => {
-    socket.emit('new_game');
+    const wordLength = parseInt(wordLengthInput.value, 10);
+    socket.emit('new_game', { wordLength });
 });
 
 document.addEventListener('keydown', (event) => {

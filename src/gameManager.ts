@@ -28,8 +28,8 @@ export default class GameManager implements GameState {
     }
 
     // Start a new game by fetching a random word and resetting the game state
-    async startNewGame(id: string): Promise<void> {
-        const randomWord = await getRandomWord();
+    async startNewGame(id: string, wordLength?: number): Promise<void> {
+        const randomWord = getRandomWord(wordLength);
         if (randomWord) {
             this.word = randomWord.toLowerCase();
             this.guessedLetters.clear();
