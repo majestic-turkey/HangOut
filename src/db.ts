@@ -4,6 +4,7 @@
 
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
+import type { GameState } from './types';
 
 export async function openDB() {
     return open({
@@ -12,7 +13,7 @@ export async function openDB() {
     });
 }
 
-export async function createGame(word, gameId) {
+export async function createGame(word: string, gameId: string) {
     const db = await openDB();
     try {
         await db.run('INSERT INTO games (word, game_id, played_at) VALUES (?, ?, CURRENT_TIMESTAMP)', [word, gameId]);
@@ -23,7 +24,7 @@ export async function createGame(word, gameId) {
     }
 }
 
-export async function saveGameState(gameState) {
+export async function saveGameState(gameState: GameState) {
     const db = await openDB();
     try {
         if (gameState.gameWon) {

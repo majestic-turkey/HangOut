@@ -4,7 +4,7 @@
 
 import { getRandomWord } from './wordService.ts';
 import type { GameState } from './types.ts';
-import { saveGameState, createGame } from './db.js';
+import { saveGameState, createGame } from './db.ts';
 
 export default class GameManager implements GameState {
     word: string;                   // The word to be guessed

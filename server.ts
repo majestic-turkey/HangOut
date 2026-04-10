@@ -5,9 +5,8 @@ import express from 'express';
 import http from 'http';
 import { nanoid } from 'nanoid';
 import { Server } from 'socket.io';
-import { initDB } from './src/db.js';
+import { initDB, saveGameState } from './src/db.ts';
 import GameManager from './src/gameManager.ts';
-import { saveGameState } from './src/db.js';
 import type { GameSession } from './src/types.ts';
 
 // Load environment variables from .env file and set constants
@@ -41,13 +40,15 @@ io.on('connection', async (socket) => {
     console.log('A user connected:', socket.id);
 
     // Listen for new game requests from clients
-    socket.on('new_game', async ({ wordLength }, maxAttempts = 6) => {
-        console.log(`New game started by ${socket.id} with word length ${wordLength || 'default'}`);
+    socket.on('new_game', async (payload, maxAttempts = 6) => {
+        const wordLength = Number.isInteger(payload?.wordLength) ? payload.wordLength : 6;
+        const requestedMaxAttempts = Number.isInteger(maxAttempts) ? maxAttempts : 6;
+        console.log(`New game started by ${socket.id} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
         try {
 
             // Initialize a new game
             let gameId = createGameId();
-            const gameManager = new GameManager(maxAttempts);
+            const gameManager = new GameManager(requestedMaxAttempts);
             if (games.has(gameId)) {
                 console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
                 gameId = createGameId();
