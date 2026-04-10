@@ -3,8 +3,12 @@
 */
 import express from 'express';
 import http from 'http';
+import { nanoid } from 'nanoid';
 import { Server } from 'socket.io';
-import { getRandomWord } from './wordService.js';
+import { initDB } from './src/db.js';
+import GameManager from './src/gameManager.ts';
+import { saveGameState } from './src/db.js';
+import type { GameSession } from './src/types.ts';
 
 // Load environment variables from .env file and set constants
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -13,27 +17,150 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "*"
+    },
+    connectionStateRecovery: {
+        maxDisconnectionDuration: 60000, // Allow reconnection within 60 seconds
+        skipMiddlewares: true // Skip any middlewares when recovering a connection
     }
 });
-
-const randomWord = await getRandomWord();
+const games = new Map<string, GameSession>();
 
 // Serve static elements
 app.use(express.static('public'));
 
-// On client connection
-io.on('connection', (socket) => {
-    console.log('A user connected');
-    io.emit('new_word', randomWord);
+// Initialize the database
+await initDB();
 
-    socket.on('disconnect', () => {
-        console.log('A user disconnected:', socket.id);
+// Generate a unique 8-character game ID
+function createGameId() {
+    return nanoid(8);
+}
+
+// On client connection
+io.on('connection', async (socket) => {
+    console.log('A user connected:', socket.id);
+
+    // Listen for new game requests from clients
+    socket.on('new_game', async ({ wordLength }, maxAttempts = 6) => {
+        console.log(`New game started by ${socket.id} with word length ${wordLength || 'default'}`);
+        try {
+
+            // Initialize a new game
+            let gameId = createGameId();
+            const gameManager = new GameManager(maxAttempts);
+            if (games.has(gameId)) {
+                console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
+                gameId = createGameId();
+            }
+            await gameManager.startNewGame(gameId, wordLength);
+
+            // Add game to registry of games
+            games.set(gameId, {
+                id: gameId,
+                manager: gameManager,
+                players: new Set([socket.id]),
+                createdAt: Date.now()
+            });
+
+            // Join the socket to a room with the game ID so that messages can be broadcast to all players in the same game
+            socket.join(gameId);
+            socket.data.gameId = gameId;
+
+            // And finally emit the initial masked word to the clients
+            io.to(gameId).emit("masked_word", {
+                maskedWord: gameManager.getMaskedWord()
+            });
+
+        } catch (error) {
+            console.error('Error starting new game:', error);
+        }
     });
 
-    socket.on('keypress', (key) => {
-        console.log(`Key pressed by ${socket.id}: ${key}`);
-        // Broadcast the keypress to all clients
-        io.emit('keypress', { id: socket.id, key });
+    // Listen for join game requests from clients
+    socket.on('join_game', (gameId, ack) => {
+        console.log(`User ${socket.id} is trying to join game ${gameId}`);
+        const game = games.get(gameId);
+        if (!game) return ack?.({ ok: false, message: "Game not found" });
+
+        socket.join(gameId);
+        socket.data.gameId = gameId;
+        io.to(gameId).emit("player_joined", {
+            socketId: socket.id
+        });
+
+        // Add the player to the game and send them the current masked word
+        game.players.add(socket.id);
+        socket.emit("masked_word", {
+            maskedWord: game.manager.getMaskedWord()
+        });
+        ack?.({ ok: true, message: "Joined game successfully" });
+    })
+
+    // Listen for guesses from clients
+    socket.on('keypress', async (key) => {
+        console.log(`User ${socket.id} pressed key ${key}`);
+        // Grab the game info
+        const gameId = socket.data.gameId;
+        const game = games.get(gameId);
+
+        // Validate that the game exists and that the key pressed is a valid letter
+        if (!game || !gameId || !/^[a-z]$/i.test(key)) return;
+
+        // Rate limit guesses to prevent spamming every 2 seconds
+        const now = Date.now();
+        if (socket.data.lastGuessTime && now - socket.data.lastGuessTime < 2000) {
+            console.log(`User ${socket.id} is guessing too fast. Ignoring guess.`);
+            return;
+        }
+        socket.data.lastGuessTime = now;
+
+        // If the game is over, ignore any further guesses
+        if (game.manager.gameWon || game.manager.attempts >= game.manager.maxAttempts) {
+            console.log(`Game ${gameId} is already over. Ignoring guess.`);
+            return;
+        }
+
+        // Make the guess and update the game state
+        const changed = JSON.parse(await game.manager.guessLetter(key.toLowerCase().trim()));
+        if (!changed.accepted) return; // If the guess was invalid, ignore it
+
+        console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
+
+        // Broadcast the updated game state to all players in the game
+        io.to(gameId).emit("masked_word", changed);
+
+        // Check if the game is over
+        if (game.manager.gameWon || game.manager.attempts >= game.manager.maxAttempts) {
+            console.log(`Game over for game ${gameId}. Won: ${game.manager.gameWon}, Word: ${game.manager.word}`);
+            io.to(gameId).emit("game_over", {
+                gameWon: game.manager.gameWon,
+                word: game.manager.word
+            });
+            game.manager.winnerId = game.manager.gameWon ? socket.id : undefined;
+            await saveGameState(game.manager);
+        }
+    })
+
+    // Listen for client disconnects
+    socket.on('disconnect', () => {
+        console.log(`User ${socket.id} disconnected`);
+        const gameId = socket.data.gameId;
+        const game = games.get(gameId);
+
+        if (!game) return;
+
+        // Remove the disconnected player from the game's player list
+        game.players.delete(socket.id);
+        
+        // If no players remain in the game, remove the game from the registry
+        if (game.players.size === 0) {
+            games.delete(gameId);
+        } else {
+            io.to(gameId).emit("player_left", {
+                socketId: socket.id
+            });
+        }
+
     });
 
 });

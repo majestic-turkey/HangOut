@@ -1,46 +1,30 @@
 const socket = io();
 
-document.addEventListener('keydown', (event) => {
-    const key = event.key;
-    socket.emit('keypress', key);
-});
 
 const output = document.getElementById('output');
 const hiddenWord = document.getElementById('hiddenword');
+const newGameBtn = document.getElementById('newGameBtn');
+const wordLengthInput = document.getElementById('word-length');
 
-let word;
-let maskedWord = [];
-// TODO: Move this logic to the backend (gameManager.ts)
-socket.on('keypress', ({ id, key }) => {
-    console.log(`User ${id} pressed key: ${key}`);
-
-    // Validate key input (allow letters, numbers, and common punctuation)
-    if (/^[\w\s\!\?\,\.\-\']$/.test(key)) {
-
-        // Update masked word if the key is correct
-        if (key.length === 1 && word.includes(key)) {
-            for (let i = 0; i < word.length; i++) {
-                if (word[i] === key) {
-                    maskedWord[i] = key;
-                }
-            }
-            hiddenWord.textContent = maskedWord.join(' ');
-        }
-
-        // Check if the word is fully guessed
-        if (word === maskedWord.join('')) {
-            alert('Congratulations! You guessed the word!');
-            socket.emit('request_new_word');
-        }
-    }
-
+newGameBtn.addEventListener('click', () => {
+    const wordLength = parseInt(wordLengthInput.value, 10);
+    socket.emit('new_game', { wordLength });
 });
 
-// New word listener
-socket.on('new_word', (newWord) => {
-    word = newWord;
-    console.log('New word received:', word);
-    output.textContent = '';
-    maskedWord = Array(word.length).fill('_');
-    hiddenWord.textContent = maskedWord.join(' ');
+document.addEventListener('keydown', (event) => {
+    if (event.repeat) return; // Ignore repeated key presses
+    if (event.key.length !== 1 || !/[a-zA-Z]/.test(event.key)) return; // Only process single alphabetic characters
+
+    newGameBtn.disabled = true;
+    const key = event.key;
+    socket.emit('keypress', key);
+    setTimeout(() => {
+        newGameBtn.disabled = false;
+    }, 2000); // Game is rate-limited to one guess every 2 seconds
+});
+
+socket.on('masked_word', (data) => {
+    if (hiddenWord) {
+        hiddenWord.textContent = data.maskedWord;
+    }
 });

@@ -23,9 +23,11 @@ npm install
 
 ## Usage
 ```bash
-# Start the application
-npm start (for nodemon)
-npx ts-node server.js (if no nodemon)
+# Start in development mode
+npm run dev
+
+# Equivalent
+npm start
 ```
 
 ## License
