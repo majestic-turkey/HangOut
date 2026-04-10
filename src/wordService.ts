@@ -4,7 +4,7 @@
 
 import words from './data/words.json' with { type: 'json' };
 
-const API_URL = 'https://random-words-api.kushcreates.com/api?language=en&length=7&type=lowercase&words=1';
+// const API_URL = 'https://random-words-api.kushcreates.com/api?language=en&length=7&type=lowercase&words=1';
 
 const FALLBACK_WORDS = [
     'socket',
@@ -19,7 +19,7 @@ const FALLBACK_WORDS = [
     'letter'
 ];
 
-const getRandomWord = (length = 6): string => {
+const getRandomWord = (length = Math.ceil(Math.random() * 10)): string => { // Random word length for testing purposes
     const filteredWords = words.filter(word => word.length === length);
     if (filteredWords.length === 0) {
         console.warn(`No words of length ${length} found in local list. Using fallback words.`);

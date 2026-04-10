@@ -41,13 +41,13 @@ io.on('connection', async (socket) => {
     console.log('A user connected:', socket.id);
 
     // Listen for new game requests from clients
-    socket.on('new_game', async ({ wordLength }) => {
+    socket.on('new_game', async ({ wordLength }, maxAttempts) => {
         console.log(`New game started by ${socket.id} with word length ${wordLength || 'default'}`);
         try {
 
             // Initialize a new game
             let gameId = createGameId();
-            const gameManager = new GameManager();
+            const gameManager = new GameManager(maxAttempts = 6);
             if (games.has(gameId)) {
                 console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
                 gameId = createGameId();
