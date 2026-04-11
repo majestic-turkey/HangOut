@@ -26,6 +26,6 @@ export default function Keyboard({ state }: KeyboardProps) {
         <div>
             {keyEls}
         </div>
-        {(isGameOver) && <button onClick={() => socket.emit('new_game')}>New Game</button>}
+        {(isGameOver) && <button onClick={() => socket.emit('continue_game')}>New Game</button>}
     </>);
 }

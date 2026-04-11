@@ -9,6 +9,7 @@ export interface GameState {
     getMaskedWord: () => string;
     guessLetter: (key: string) => Promise<string>;
     wrongLetters: Set<string>;
+    reset: () => void;
 };
 
 

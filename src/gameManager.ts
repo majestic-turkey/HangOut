@@ -5,6 +5,7 @@
 import { getRandomWord } from './wordService.ts';
 import type { GameState } from './types.ts';
 import { saveGameState, createGame } from './db.ts';
+import { get } from 'node:http';
 
 export default class GameManager implements GameState {
     word: string;                   // The word to be guessed
@@ -56,6 +57,16 @@ export default class GameManager implements GameState {
         } as GameState;
     }
 
+    // Reset the game state to start a new game
+    reset(): void {
+        this.word = getRandomWord(this.word.length);
+        this.guessedLetters.clear();
+        this.wrongLetters.clear();
+        this.attempts = 0;
+        this.gameWon = false;
+        this.winnerId = undefined;
+        this.gameId += '-' + (Date.now() % 38); // Generate a new game ID by appending a timestamp
+    }
 
     // Process a letter guess, update game state accordingly, and return whether the guess was valid
     async guessLetter(letter: string): Promise<string> {

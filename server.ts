@@ -190,6 +190,17 @@ io.on('connection', async (socket) => {
         }
     })
 
+    // Listen for requests to start a new game after finishing the current one
+    socket.on('continue_game', async () => {
+        const gameId = socket.data.gameId;
+        const game = games.get(gameId);
+        if (!game) return;
+
+        // Reset the game state
+        game.manager.reset();
+        io.to(gameId).emit("masked_word", createPayload(game.manager));
+    });
+
     // Listen for client disconnects
     socket.on('disconnect', () => {
         console.log(`User ${socket.id} disconnected`);
