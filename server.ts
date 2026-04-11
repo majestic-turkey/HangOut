@@ -3,6 +3,8 @@
 */
 import express from 'express';
 import http from 'http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { nanoid } from 'nanoid';
 import { Server } from 'socket.io';
 import { initDB, saveGameState } from './src/db.ts';
@@ -11,6 +13,9 @@ import type { GameSession } from './src/types.ts';
 
 // Load environment variables from .env file and set constants
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, 'frontend', 'dist');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -24,8 +29,23 @@ const io = new Server(server, {
 });
 const games = new Map<string, GameSession>();
 
+function createPayload(manager: GameSession['manager'], overrides?: { maskedWord?: string; attemptsLeft?: number }) {
+    const maskedWord = overrides?.maskedWord ?? manager.getMaskedWord();
+    const attemptsLeft = overrides?.attemptsLeft ?? manager.maxAttempts - manager.attempts;
+
+    return {
+        maskedWord,
+        attemptsLeft,
+        gameState: {
+            ...manager,
+            maskedWord,
+            attemptsLeft
+        }
+    };
+}
+
 // Serve static elements
-app.use(express.static('public'));
+app.use(express.static(distPath));
 
 // Initialize the database
 await initDB();
@@ -64,13 +84,11 @@ io.on('connection', async (socket) => {
             });
 
             // Join the socket to a room with the game ID so that messages can be broadcast to all players in the same game
-            socket.join(gameId);
+            await socket.join(gameId);
             socket.data.gameId = gameId;
 
             // And finally emit the initial masked word to the clients
-            io.to(gameId).emit("masked_word", {
-                maskedWord: gameManager.getMaskedWord()
-            });
+            io.to(gameId).emit("masked_word", createPayload(gameManager));
 
         } catch (error) {
             console.error('Error starting new game:', error);
@@ -78,12 +96,12 @@ io.on('connection', async (socket) => {
     });
 
     // Listen for join game requests from clients
-    socket.on('join_game', (gameId, ack) => {
+    socket.on('join_game', async (gameId, ack) => {
         console.log(`User ${socket.id} is trying to join game ${gameId}`);
         const game = games.get(gameId);
         if (!game) return ack?.({ ok: false, message: "Game not found" });
 
-        socket.join(gameId);
+        await socket.join(gameId);
         socket.data.gameId = gameId;
         io.to(gameId).emit("player_joined", {
             socketId: socket.id
@@ -91,9 +109,7 @@ io.on('connection', async (socket) => {
 
         // Add the player to the game and send them the current masked word
         game.players.add(socket.id);
-        socket.emit("masked_word", {
-            maskedWord: game.manager.getMaskedWord()
-        });
+        socket.emit("masked_word", createPayload(game.manager));
         ack?.({ ok: true, message: "Joined game successfully" });
     })
 
@@ -128,7 +144,13 @@ io.on('connection', async (socket) => {
         console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
 
         // Broadcast the updated game state to all players in the game
-        io.to(gameId).emit("masked_word", changed);
+        io.to(gameId).emit("masked_word", {
+            ...changed,
+            ...createPayload(game.manager, {
+                maskedWord: changed.maskedWord,
+                attemptsLeft: changed.attemptsLeft
+            })
+        });
 
         // Check if the game is over
         if (game.manager.gameWon || game.manager.attempts >= game.manager.maxAttempts) {
@@ -164,6 +186,11 @@ io.on('connection', async (socket) => {
 
     });
 
+});
+
+// Serve the frontend application for all other routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
 });
 
 server.listen(PORT, '0.0.0.0', () => {

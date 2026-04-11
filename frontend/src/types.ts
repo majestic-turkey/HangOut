@@ -1,0 +1,11 @@
+export interface GameState {
+    word: string;
+    guessedLetters: Set<string>;
+    wrongLetters: Set<string>;
+    attempts: number;
+    maxAttempts: number;
+    gameWon: boolean;
+    gameId: string;
+    maskedWord: string;
+    attemptsLeft: number;
+}

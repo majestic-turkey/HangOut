@@ -47,6 +47,15 @@ export default class GameManager implements GameState {
         return this.word.split('').map((char) => (this.guessedLetters.has(char) ? char : '_')).join(' ');
     }
 
+    // Get the current game state
+    getGameState(): GameState {
+        return {
+            ...this,
+            maskedWord: this.getMaskedWord(),
+            attemptsLeft: this.maxAttempts - this.attempts,
+        } as GameState;
+    }
+
 
     // Process a letter guess, update game state accordingly, and return whether the guess was valid
     async guessLetter(letter: string): Promise<string> {
