@@ -4,7 +4,7 @@
 
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
-import type { GameState } from './types';
+import type { GameState } from './types.ts';
 
 export async function openDB() {
     return open({

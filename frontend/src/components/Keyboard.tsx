@@ -1,9 +1,22 @@
+import { useState } from 'react'
 import type {KeyboardProps} from '../types.ts'
 import { socket } from '../socket.ts'
 
 export default function Keyboard({ state }: KeyboardProps) {
+    const [statusMessage, setStatusMessage] = useState<string | null>(null)
     const keys = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
     const isGameOver = state.gameWon || state.attemptsLeft <= 0;
+
+    const handleContinueGame = () => {
+        socket.emit('continue_game', (response?: { ok?: boolean; message?: string }) => {
+            if (!response?.ok) {
+                setStatusMessage(response?.message ?? 'Unable to restart game')
+                return
+            }
+
+            setStatusMessage('Game restarted for all players')
+        })
+    }
 
     // Render keyboard keys
     const keyEls = keys.map(row => {
@@ -26,6 +39,7 @@ export default function Keyboard({ state }: KeyboardProps) {
         <div>
             {keyEls}
         </div>
-        {(isGameOver) && <button onClick={() => socket.emit('new_game')}>New Game</button>}
+        {(isGameOver) && <button onClick={handleContinueGame}>New Game</button>}
+        {statusMessage ? <p>{statusMessage}</p> : null}
     </>);
 }

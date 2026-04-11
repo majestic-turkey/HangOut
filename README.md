@@ -71,7 +71,7 @@ Default URLs:
 
 ## Socket Events
 
-- Client -> Server: `new_game`, `join_game`, `keypress`
+- Client -> Server: `new_game`, `join_game`, `keypress`, `continue_game`
 - Server -> Client: `masked_word`, `game_over`, `player_joined`, `player_left`
 
 ## Data Persistence
@@ -117,13 +117,15 @@ Database file path: `./hangman.db`
 
 ### Guesses seem ignored
 
-- The server rate-limits guesses to one every 2 seconds per socket.
+- The server rate-limits guesses to one every 1 second per socket.
 - Only alphabetic single-letter guesses are accepted.
 
 ## Scripts (Root)
 
 - `npm run dev`: run server and client concurrently
 - `npm start`: run server in watch mode
+- `npm run typecheck`: type-check backend TypeScript
+- `npm run build`: run backend typecheck and frontend production build
 - `npm run dev:server`: run backend watcher directly
 - `npm run dev:client`: run Vite frontend dev server
 

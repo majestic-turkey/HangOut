@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { socket } from '../socket'
 
 export default function TitleScreen() {
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+
   const handleStartGame = () => {
     const wordLengthInput = document.getElementById('word-length') as HTMLInputElement;
     const wordLength = wordLengthInput?.value ? parseInt(wordLengthInput.value) : 6;
@@ -11,8 +14,15 @@ export default function TitleScreen() {
 
     // If a game ID is provided, attempt to join that game. Otherwise, start a new game with the specified word length and max attempts.
     if (gameId) {
-      socket.emit('join_game', gameId);
+      socket.emit('join_game', gameId, (response?: { ok?: boolean; message?: string }) => {
+        if (!response?.ok) {
+          setStatusMessage(response?.message ?? 'Unable to join game')
+          return
+        }
+        setStatusMessage('Joined game successfully')
+      });
     } else {
+      setStatusMessage(null)
       socket.emit('new_game', { wordLength }, maxAttempts);
     }
   }
@@ -30,6 +40,7 @@ export default function TitleScreen() {
         spellCheck={false}
       />
       <button className="start-button" onClick={handleStartGame}>Start Game</button>
+      {statusMessage ? <p>{statusMessage}</p> : null}
     </div>
   )
 }

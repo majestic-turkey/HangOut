@@ -139,6 +139,20 @@ io.on('connection', async (socket) => {
         ack?.({ ok: true, message: "Joined game successfully" });
     })
 
+    // Restart the current game for all players in the same room.
+    socket.on('continue_game', async (ack) => {
+        const gameId = socket.data.gameId;
+        const game = games.get(gameId);
+        if (!game || !gameId) {
+            return ack?.({ ok: false, message: 'Game not found' });
+        }
+
+        const nextWordLength = game.manager.word.length || undefined;
+        await game.manager.startNewGame(game.id, nextWordLength);
+        io.to(game.id).emit('masked_word', createPayload(game.manager));
+        ack?.({ ok: true, message: 'Game restarted' });
+    });
+
     // Listen for guesses from clients
     socket.on('keypress', async (key) => {
         console.log(`User ${socket.id} pressed key ${key}`);
@@ -188,7 +202,7 @@ io.on('connection', async (socket) => {
             game.manager.winnerId = game.manager.gameWon ? socket.id : undefined;
             await saveGameState(game.manager);
         }
-    })
+    });
 
     // Listen for client disconnects
     socket.on('disconnect', () => {
