@@ -33,7 +33,23 @@ function App(): React.ReactElement {
   React.useEffect(() => {
     const handleMaskedWord = (payload: { gameState?: GameState; maskedWord?: string; attemptsLeft?: number }) => {
       if (payload?.gameState) {
-        setGameState(payload.gameState)
+        // TODO: Revisit socket DTO normalization.
+        // Expected transport shape is arrays for guessed/wrong letters, then rehydrate to Set:
+        // const toSet = (v: unknown): Set<string> => {
+        //   if (v instanceof Set) return v
+        //   if (Array.isArray(v)) return new Set(v.filter((x): x is string => typeof x === 'string'))
+        //   return new Set()
+        // }
+        // setGameState({
+        //   ...payload.gameState,
+        //   guessedLetters: toSet(payload.gameState.guessedLetters),
+        //   wrongLetters: toSet(payload.gameState.wrongLetters)
+        // })
+        setGameState({
+          ...payload.gameState,
+          guessedLetters: new Set(payload.gameState.guessedLetters),
+          wrongLetters: new Set(payload.gameState.wrongLetters)
+        })
         return
       }
 

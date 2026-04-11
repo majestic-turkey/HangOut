@@ -33,6 +33,21 @@ function createPayload(manager: GameSession['manager'], overrides?: { maskedWord
     const maskedWord = overrides?.maskedWord ?? manager.getMaskedWord();
     const attemptsLeft = overrides?.attemptsLeft ?? manager.maxAttempts - manager.attempts;
 
+    // TODO: Revisit payload shape for socket transport.
+    // Sets are not JSON-safe over socket payloads; serialize them as arrays here:
+    // gameState: {
+    //   word: manager.word,
+    //   guessedLetters: Array.from(manager.guessedLetters),
+    //   wrongLetters: Array.from(manager.wrongLetters),
+    //   maxAttempts: manager.maxAttempts,
+    //   attempts: manager.attempts,
+    //   gameWon: manager.gameWon,
+    //   winnerId: manager.winnerId,
+    //   gameId: manager.gameId,
+    //   maskedWord,
+    //   attemptsLeft
+    // }
+
     return {
         maskedWord,
         attemptsLeft,

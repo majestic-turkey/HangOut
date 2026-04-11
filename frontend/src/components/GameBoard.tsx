@@ -2,6 +2,7 @@ import React from 'react'
 import Confetti from 'react-confetti'
 import type { GameState } from '../types.ts'
 import { socket } from '../socket'
+import Keyboard from './Keyboard'
 
 export default function GameBoard({ state }: { state: GameState }) {
     React.useEffect(() => {
@@ -23,10 +24,7 @@ export default function GameBoard({ state }: { state: GameState }) {
             {state.gameWon && <Confetti wind={0.02} />}
             <p>Word: {state.maskedWord}</p>
             <p>Attempts left: {state.attemptsLeft}</p>
-            {/* TODO: Display keyboard component for mobile devices
-            <Keyboard guessedLetters={state.guessedLetters} />
-            Keyboard should display letters still available to guess, as well as fade guessed letters - gray if not in the word, green if in the word
-             */}
+            <Keyboard guessedLetters={state.guessedLetters} wrongLetters={state.wrongLetters} />
         </div>
     )
 }

@@ -9,3 +9,8 @@ export interface GameState {
     maskedWord: string;
     attemptsLeft: number;
 }
+
+export interface KeyboardProps {
+    guessedLetters: Set<string>;
+    wrongLetters: Set<string>;
+}
