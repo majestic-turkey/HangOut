@@ -1,18 +1,20 @@
 import type {KeyboardProps} from '../types.ts'
+import { socket } from '../socket.ts'
 
-export default function Keyboard({ guessedLetters, wrongLetters }: KeyboardProps) {
-    const keys = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+export default function Keyboard({ state }: KeyboardProps) {
+    const keys = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+    const isGameOver = state.gameWon || state.attemptsLeft <= 0;
 
     // Render keyboard keys
     const keyEls = keys.map(row => {
         return (
         <div key={row}>
             {row.split('').map(key => {
-                const isGuessed = guessedLetters.has(key);
-                const isWrong = wrongLetters.has(key);
+                const isGuessed = state.guessedLetters.has(key);
+                const isWrong = state.wrongLetters.has(key);
                 return (
-                    <button key={key} disabled={isGuessed} className={`key ${isGuessed ? 'guessed-key' : ''} ${isWrong ? 'wrong-key' : ''}`}>
-                        {key}
+                    <button key={key} onClick={() => socket.emit('keypress', key)} disabled={isGuessed} className={`key ${isGuessed ? 'guessed-key' : ''} ${isWrong ? 'wrong-key' : ''}`}>
+                        {key.toUpperCase()}
                     </button>
                 );
             })}
@@ -20,9 +22,10 @@ export default function Keyboard({ guessedLetters, wrongLetters }: KeyboardProps
         );
     });
 
-    return (
+    return (<>
         <div>
             {keyEls}
         </div>
-    );
+        {(isGameOver) && <button onClick={() => socket.emit('new_game')}>New Game</button>}
+    </>);
 }

@@ -11,6 +11,5 @@ export interface GameState {
 }
 
 export interface KeyboardProps {
-    guessedLetters: Set<string>;
-    wrongLetters: Set<string>;
+    state: GameState;
 }

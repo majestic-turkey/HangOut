@@ -33,26 +33,20 @@ function createPayload(manager: GameSession['manager'], overrides?: { maskedWord
     const maskedWord = overrides?.maskedWord ?? manager.getMaskedWord();
     const attemptsLeft = overrides?.attemptsLeft ?? manager.maxAttempts - manager.attempts;
 
-    // TODO: Revisit payload shape for socket transport.
-    // Sets are not JSON-safe over socket payloads; serialize them as arrays here:
-    // gameState: {
-    //   word: manager.word,
-    //   guessedLetters: Array.from(manager.guessedLetters),
-    //   wrongLetters: Array.from(manager.wrongLetters),
-    //   maxAttempts: manager.maxAttempts,
-    //   attempts: manager.attempts,
-    //   gameWon: manager.gameWon,
-    //   winnerId: manager.winnerId,
-    //   gameId: manager.gameId,
-    //   maskedWord,
-    //   attemptsLeft
-    // }
-
+    // Dehydrate sets to arrays for transmission, manually rehydrate them on the client side
+    // Complete gamestate is sent with every update to ensure that clients can rehydrate the full state if needed (e.g. on reconnect)
     return {
         maskedWord,
         attemptsLeft,
         gameState: {
-            ...manager,
+            word: manager.word,
+            guessedLetters: Array.from(manager.guessedLetters),
+            wrongLetters: Array.from(manager.wrongLetters),
+            maxAttempts: manager.maxAttempts,
+            attempts: manager.attempts,
+            gameWon: manager.gameWon,
+            winnerId: manager.winnerId,
+            gameId: manager.gameId,
             maskedWord,
             attemptsLeft
         }
@@ -138,9 +132,9 @@ io.on('connection', async (socket) => {
         // Validate that the game exists and that the key pressed is a valid letter
         if (!game || !gameId || !/^[a-z]$/i.test(key)) return;
 
-        // Rate limit guesses to prevent spamming every 2 seconds
+        // Rate limit guesses to prevent spamming every 1 seconds
         const now = Date.now();
-        if (socket.data.lastGuessTime && now - socket.data.lastGuessTime < 2000) {
+        if (socket.data.lastGuessTime && now - socket.data.lastGuessTime < 1000) {
             console.log(`User ${socket.id} is guessing too fast. Ignoring guess.`);
             return;
         }

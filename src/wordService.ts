@@ -1,7 +1,3 @@
-/**
- * Interact with word API to fetch random words for the Hangman game
- */
-
 import words from './data/words.json' with { type: 'json' };
 
 // const API_URL = 'https://random-words-api.kushcreates.com/api?language=en&length=7&type=lowercase&words=1';
