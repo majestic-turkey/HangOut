@@ -64,6 +64,23 @@ function createGameId() {
     return nanoid(8);
 }
 
+function findGameById(input: string | undefined) {
+    if (!input) return undefined;
+    const trimmed = input.trim();
+    if (!trimmed) return undefined;
+
+    // Prefer exact match, then fallback to case-insensitive lookup for mobile keyboard variance.
+    const exact = games.get(trimmed);
+    if (exact) return exact;
+
+    const lower = trimmed.toLowerCase();
+    for (const [id, game] of games.entries()) {
+        if (id.toLowerCase() === lower) return game;
+    }
+
+    return undefined;
+}
+
 // On client connection
 io.on('connection', async (socket) => {
     console.log('A user connected:', socket.id);
@@ -107,12 +124,12 @@ io.on('connection', async (socket) => {
     // Listen for join game requests from clients
     socket.on('join_game', async (gameId, ack) => {
         console.log(`User ${socket.id} is trying to join game ${gameId}`);
-        const game = games.get(gameId);
+        const game = findGameById(typeof gameId === 'string' ? gameId : undefined);
         if (!game) return ack?.({ ok: false, message: "Game not found" });
 
-        await socket.join(gameId);
-        socket.data.gameId = gameId;
-        io.to(gameId).emit("player_joined", {
+        await socket.join(game.id);
+        socket.data.gameId = game.id;
+        io.to(game.id).emit("player_joined", {
             socketId: socket.id
         });
 

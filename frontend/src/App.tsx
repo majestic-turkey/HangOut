@@ -75,6 +75,7 @@ function App(): React.ReactElement {
       <GameContext value={gameState}>
         {gameState === null && <TitleScreen />}
         {gameState && <GameBoard state={gameState} />}
+        {gameState?.gameId ? <p>Game ID: {gameState.gameId}</p> : null}
       </GameContext>
     </div>
   </>)
