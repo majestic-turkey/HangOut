@@ -3,6 +3,7 @@ import Confetti from 'react-confetti'
 import type { GameState } from '../types.ts'
 import { socket } from '../socket'
 import Keyboard from './Keyboard'
+import Chat from './Chat'
 
 export default function GameBoard({ state }: { state: GameState }) {
     React.useEffect(() => {
@@ -25,6 +26,7 @@ export default function GameBoard({ state }: { state: GameState }) {
             <p>Word: {state.attemptsLeft <= 0 || state.gameWon ? state.word : state.maskedWord}</p>
             <p>Attempts left: {state.attemptsLeft}</p>
             <Keyboard state={state} />
+            <Chat />
         </div>
     )
 }
