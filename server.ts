@@ -99,7 +99,7 @@ io.on('connection', async (socket) => {
         const wordLength = Number.isInteger(payload?.wordLength) ? payload.wordLength : 6;
         const requestedMaxAttempts = Number.isInteger(maxAttempts) ? maxAttempts : 6;
         const userName = typeof payload?.userName === 'string' && payload.userName.trim() ? payload.userName.trim() : 'Guest';
-        console.log(`New game started by ${payload.userName} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
+        console.log(`New game started by ${userName} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
         try {
 
             // Initialize a new game

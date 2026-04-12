@@ -134,7 +134,11 @@ export async function initDB() {
         FOREIGN KEY (user_id) REFERENCES users(id)
     )`);
 
-        await db.exec('ALTER TABLE chats ADD COLUMN user_name TEXT').catch(() => undefined);
+        const chatColumns = await db.all('PRAGMA table_info(chats)');
+        const hasUserNameColumn = chatColumns.some((column: { name: string }) => column.name === 'user_name');
+        if (!hasUserNameColumn) {
+            await db.exec('ALTER TABLE chats ADD COLUMN user_name TEXT');
+        }
 
         console.log('Database setup complete.');
     } catch (error) {
