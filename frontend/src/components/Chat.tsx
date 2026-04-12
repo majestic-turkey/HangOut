@@ -3,7 +3,7 @@ import { socket } from '../socket'
 
 export default function Chat () {
     const [chatInput, setChatInput] = React.useState('');
-    const [chatMessages, setChatMessages] = React.useState<{ socketId: string, message: string }[]>([]);
+    const [chatMessages, setChatMessages] = React.useState<{ socketId: string, userName: string, message: string }[]>([]);
 
     // Chat message sending
     React.useEffect(() => {
@@ -19,8 +19,8 @@ export default function Chat () {
 
     // Chat message listener
     React.useEffect(() => {
-        const handleChatMessage = (data: { socketId: string, message: string }) => {
-            console.log(`Chat message from ${data.socketId}: ${data.message}`);
+        const handleChatMessage = (data: { socketId: string, userName: string, message: string }) => {
+            console.log(`Chat message from ${data.userName}: ${data.message}`);
             setChatMessages((prev) => [...prev, data]);
         }
 
@@ -40,7 +40,7 @@ export default function Chat () {
     return (<>
         <div className="chat">
             {chatMessages.map((msg, index) => (
-                <p key={index} className="chat-message"><strong>{msg.socketId}:</strong> {msg.message}</p>
+                <p key={index} className="chat-message"><strong>{msg.userName}:</strong> {msg.message}</p>
             ))}
         </div>
         <form onSubmit={(e) => { e.preventDefault(); sendChat(); }}>

@@ -11,6 +11,8 @@ export interface GameState {
     startNewGame: (id: string, wordLength?: number) => Promise<void>;
     wrongLetters: Set<string>;
     reset: () => void;
+    getPlayerName: (socketId: string) => string;
+    addOrUpdatePlayer: (socketId: string, userName: string) => void;
 };
 
 
@@ -19,4 +21,9 @@ export interface GameSession {
     manager: GameState;
     players: Set<string>;
     createdAt: number;
+}
+
+export interface Player {
+    socketId: string;
+    userName: string;
 }
