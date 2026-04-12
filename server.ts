@@ -16,7 +16,8 @@ import {
     fetchChatMessages,
     initDB,
     saveGameState,
-    clearChatMessages } from './src/db.ts';
+    clearChatMessages
+} from './src/db.ts';
 import GameManager from './src/gameManager.ts';
 import type { GameSession } from './src/types.ts';
 
@@ -191,7 +192,12 @@ io.on('connection', async (socket) => {
         }
 
         const nextWordLength = game.manager.word.length || undefined;
-        await game.manager.startNewGame(game.id, nextWordLength);
+        try {
+            await game.manager.startNewGame(game.id, nextWordLength);
+        } catch (error) {
+            console.error('Error starting new game:', error);
+            return ack?.({ ok: false, message: 'Failed to start new game' });
+        }
         io.to(game.id).emit('masked_word', createPayload(game.manager));
         ack?.({ ok: true, message: 'Game restarted' });
     });
@@ -278,7 +284,7 @@ io.on('connection', async (socket) => {
         // Remove the disconnected player from the game's player list
         game.players.delete(socket.id);
         game.manager.removePlayer(socket.id);
-        
+
         // If no players remain in the game, remove the game from the registry
         if (game.players.size === 0) {
             games.delete(gameId);

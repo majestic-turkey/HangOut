@@ -81,12 +81,11 @@ export async function saveGameState(gameState: GameState) {
     const db = await openDB();
     try {
         if (gameState.gameWon) {
-            await db.run('UPDATE games SET winner_id = ?, word = ?, game_id = ? WHERE game_id = ?', [gameState.winnerId, gameState.word, gameState.gameId, gameState.gameId]);
-            await db.run('UPDATE users SET wins = wins + 1 WHERE id = ?', [gameState.winnerId]);
+            await db.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [gameState.winnerId, gameState.word, gameState.gameId]);
             await clearChatMessages(gameState.gameId);
             return true;
         } else if (gameState.word && !gameState.winnerId) {
-            await db.run('UPDATE games SET word = ?, game_id = ?, played_at = CURRENT_TIMESTAMP WHERE game_id = ?', [gameState.word, gameState.gameId, gameState.gameId]);
+            await db.run('UPDATE games SET word = ?, played_at = CURRENT_TIMESTAMP WHERE game_id = ?', [gameState.word, gameState.gameId]);
             return true;
         }
     } catch (error) {
@@ -111,9 +110,8 @@ export async function initDB() {
         winner_id TEXT,
         word TEXT NOT NULL,
         game_id TEXT NOT NULL,
-        played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (winner_id) REFERENCES users(id)
-    )`);
+        played_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    `);
 
         // Create users table
         await db.exec(`CREATE TABLE IF NOT EXISTS users (
@@ -130,9 +128,8 @@ export async function initDB() {
         user_name TEXT,
         message TEXT NOT NULL,
         sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (game_id) REFERENCES games(game_id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )`);
+        FOREIGN KEY (game_id) REFERENCES games(game_id)
+    `);
 
         const chatColumns = await db.all('PRAGMA table_info(chats)');
         const hasUserNameColumn = chatColumns.some((column: { name: string }) => column.name === 'user_name');
