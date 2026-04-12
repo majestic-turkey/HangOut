@@ -3,8 +3,8 @@
  */
 
 import { getRandomWord } from './wordService.ts';
-import type { GameState } from './types.ts';
-import { saveGameState, createGame } from './db.js';
+import type { GameState, Player } from './types.ts';
+import { saveGameState, createGame } from './db.ts';
 
 export default class GameManager implements GameState {
     word: string;                   // The word to be guessed
@@ -15,6 +15,7 @@ export default class GameManager implements GameState {
     winnerId?: string;              // ID of the winner, if the game has been won
     gameId: string;                 // Unique identifier for the game session
     wrongLetters: Set<string>;      // Letters that have been guessed incorrectly
+    players: Set<Player>;
 
     constructor(maxAttempts: number) {
         this.word = '';
@@ -25,6 +26,7 @@ export default class GameManager implements GameState {
         this.gameWon = false;
         this.winnerId = undefined;
         this.gameId = '';
+        this.players = new Set();
     }
 
     // Start a new game by fetching a random word and resetting the game state
@@ -47,6 +49,42 @@ export default class GameManager implements GameState {
         return this.word.split('').map((char) => (this.guessedLetters.has(char) ? char : '_')).join(' ');
     }
 
+    // Get the current game state
+    getGameState(): GameState {
+        return {
+            ...this,
+            maskedWord: this.getMaskedWord(),
+            attemptsLeft: this.maxAttempts - this.attempts,
+        } as GameState;
+    }
+
+    // Retrieve a player name
+    getPlayerName(socketId: string): string {
+        const player = Array.from(this.players).find((p) => p.socketId === socketId);
+        return player ? player.userName : `Player-${this.gameId.substring(0, 4)}`;
+    }
+
+    // Keep one player record per socket and allow name updates on reconnect/rejoin.
+    addOrUpdatePlayer(socketId: string, userName: string): void {
+        const normalizedName = userName?.trim() || 'Guest';
+        this.players = new Set(Array.from(this.players).filter((p) => p.socketId !== socketId));
+        this.players.add({ socketId, userName: normalizedName });
+    }
+
+    removePlayer(socketId: string): void {
+        this.players = new Set(Array.from(this.players).filter((p) => p.socketId !== socketId));
+    }
+
+    // Reset the game state to start a new game
+    reset(): void {
+        this.word = getRandomWord(this.word.length);
+        this.guessedLetters.clear();
+        this.wrongLetters.clear();
+        this.attempts = 0;
+        this.gameWon = false;
+        this.winnerId = undefined;
+        this.gameId += '-' + (Date.now() % 38); // Generate a new game ID by appending a timestamp
+    }
 
     // Process a letter guess, update game state accordingly, and return whether the guess was valid
     async guessLetter(letter: string): Promise<string> {

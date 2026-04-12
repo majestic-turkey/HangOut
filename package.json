@@ -1,6 +1,6 @@
 {
     "name": "hangout",
-    "version": "0.0.1",
+    "version": "0.5.0",
     "description": "Multiplayer Hangman",
     "keywords": [
         "hangman",
@@ -20,8 +20,13 @@
     "type": "module",
     "main": "server.ts",
     "scripts": {
-        "dev": "npm start",
-        "start": "npx nodemon server.ts"
+        "dev": "npm run dev:all",
+        "start": "npm run dev:server",
+        "build": "npm run typecheck && npm --prefix frontend run build",
+        "typecheck": "tsc -p tsconfig.json",
+        "dev:server": "npx nodemon server.ts",
+        "dev:client": "npm --prefix frontend run dev",
+        "dev:all": "npx concurrently -n server,client -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\""
     },
     "dependencies": {
         "dotenv": "^17.4.1",
