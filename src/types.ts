@@ -13,6 +13,7 @@ export interface GameState {
     reset: () => void;
     getPlayerName: (socketId: string) => string;
     addOrUpdatePlayer: (socketId: string, userName: string) => void;
+    removePlayer: (socketId: string) => void;
     players: Set<Player>;
 };
 

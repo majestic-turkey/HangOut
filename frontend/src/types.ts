@@ -19,3 +19,8 @@ export interface ChatMessage {
     userName: string;
     message: string;
 }
+
+export interface ConnectedPlayer {
+    socketId: string;
+    userName: string;
+}

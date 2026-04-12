@@ -62,6 +62,17 @@ function createPayload(manager: GameSession['manager'], overrides?: { maskedWord
     };
 }
 
+function getConnectedPlayers(game: GameSession) {
+    return Array.from(game.manager.players).map((player) => ({
+        socketId: player.socketId,
+        userName: player.userName
+    }));
+}
+
+function emitPlayerList(game: GameSession) {
+    io.to(game.id).emit('player_list', getConnectedPlayers(game));
+}
+
 // Serve static elements
 app.use(express.static(distPath));
 
@@ -112,12 +123,13 @@ io.on('connection', async (socket) => {
             await gameManager.startNewGame(gameId, wordLength);
 
             // Add game to registry of games
-            games.set(gameId, {
+            const gameSession: GameSession = {
                 id: gameId,
                 manager: gameManager,
                 players: new Set([socket.id]),
                 createdAt: Date.now()
-            });
+            };
+            games.set(gameId, gameSession);
 
             // Join the socket to a room with the game ID so that messages can be broadcast to all players in the same game
             await socket.join(gameId);
@@ -127,6 +139,7 @@ io.on('connection', async (socket) => {
 
             // And finally emit the initial masked word to the clients
             io.to(gameId).emit("masked_word", createPayload(gameManager));
+            emitPlayerList(gameSession);
 
         } catch (error) {
             console.error('Error starting new game:', error);
@@ -145,16 +158,21 @@ io.on('connection', async (socket) => {
         const normalizedUserName = typeof userName === 'string' && userName.trim() ? userName.trim() : 'Guest';
         socket.data.userName = normalizedUserName;
         game.manager.addOrUpdatePlayer(socket.id, normalizedUserName);
-        io.to(game.id).emit("player_joined", {
-            userName: normalizedUserName,
-            socketId: socket.id
-        });
 
         // Add the player to the game and send them the current masked word and chat
         game.players.add(socket.id);
         socket.emit("masked_word", createPayload(game.manager));
+        emitPlayerList(game);
         ack?.({ ok: true, message: "Joined game successfully" });
     })
+
+    socket.on('get_player_list', () => {
+        const gameId = socket.data.gameId;
+        const game = games.get(gameId);
+        if (!game) return;
+
+        socket.emit('player_list', getConnectedPlayers(game));
+    });
 
     socket.on('get_chat_history', async () => {
         const gameId = socket.data.gameId;
@@ -259,14 +277,13 @@ io.on('connection', async (socket) => {
 
         // Remove the disconnected player from the game's player list
         game.players.delete(socket.id);
+        game.manager.removePlayer(socket.id);
         
         // If no players remain in the game, remove the game from the registry
         if (game.players.size === 0) {
             games.delete(gameId);
         } else {
-            io.to(gameId).emit("player_left", {
-                socketId: socket.id
-            });
+            emitPlayerList(game);
         }
 
     });

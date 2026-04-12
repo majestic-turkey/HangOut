@@ -71,6 +71,10 @@ export default class GameManager implements GameState {
         this.players.add({ socketId, userName: normalizedName });
     }
 
+    removePlayer(socketId: string): void {
+        this.players = new Set(Array.from(this.players).filter((p) => p.socketId !== socketId));
+    }
+
     // Reset the game state to start a new game
     reset(): void {
         this.word = getRandomWord(this.word.length);
