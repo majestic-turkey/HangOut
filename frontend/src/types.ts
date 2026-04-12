@@ -13,3 +13,9 @@ export interface GameState {
 export interface KeyboardProps {
     state: GameState;
 }
+
+export interface ChatMessage {
+    socketId: string;
+    userName: string;
+    message: string;
+}

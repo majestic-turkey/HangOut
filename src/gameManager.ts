@@ -3,7 +3,7 @@
  */
 
 import { getRandomWord } from './wordService.ts';
-import type { GameState } from './types.ts';
+import type { GameState, Player } from './types.ts';
 import { saveGameState, createGame } from './db.ts';
 
 export default class GameManager implements GameState {
@@ -15,6 +15,7 @@ export default class GameManager implements GameState {
     winnerId?: string;              // ID of the winner, if the game has been won
     gameId: string;                 // Unique identifier for the game session
     wrongLetters: Set<string>;      // Letters that have been guessed incorrectly
+    players: Set<Player>;
 
     constructor(maxAttempts: number) {
         this.word = '';
@@ -25,6 +26,7 @@ export default class GameManager implements GameState {
         this.gameWon = false;
         this.winnerId = undefined;
         this.gameId = '';
+        this.players = new Set();
     }
 
     // Start a new game by fetching a random word and resetting the game state
@@ -54,6 +56,19 @@ export default class GameManager implements GameState {
             maskedWord: this.getMaskedWord(),
             attemptsLeft: this.maxAttempts - this.attempts,
         } as GameState;
+    }
+
+    // Retrieve a player name
+    getPlayerName(socketId: string): string {
+        const player = Array.from(this.players).find((p) => p.socketId === socketId);
+        return player ? player.userName : `Player-${this.gameId.substring(0, 4)}`;
+    }
+
+    // Keep one player record per socket and allow name updates on reconnect/rejoin.
+    addOrUpdatePlayer(socketId: string, userName: string): void {
+        const normalizedName = userName?.trim() || 'Guest';
+        this.players = new Set(Array.from(this.players).filter((p) => p.socketId !== socketId));
+        this.players.add({ socketId, userName: normalizedName });
     }
 
     // Reset the game state to start a new game

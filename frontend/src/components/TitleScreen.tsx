@@ -13,8 +13,11 @@ export default function TitleScreen() {
     const maxAttempts = maxAttemptsInput?.value ? parseInt(maxAttemptsInput.value) : 6;
 
     // If a game ID is provided, attempt to join that game. Otherwise, start a new game with the specified word length and max attempts.
+    const userNameInput = document.getElementById('user-name') as HTMLInputElement;
+    const userName = userNameInput?.value ? userNameInput.value : 'Guest';
+
     if (gameId) {
-      socket.emit('join_game', gameId, (response?: { ok?: boolean; message?: string }) => {
+      socket.emit('join_game', { gameId, userName }, (response?: { ok?: boolean; message?: string }) => {
         if (!response?.ok) {
           setStatusMessage(response?.message ?? 'Unable to join game')
           return
@@ -23,7 +26,7 @@ export default function TitleScreen() {
       });
     } else {
       setStatusMessage(null)
-      socket.emit('new_game', { wordLength, maxAttempts }, (response?: { ok?: boolean; message?: string }) => {
+      socket.emit('new_game', { wordLength, maxAttempts, userName }, (response?: { ok?: boolean; message?: string }) => {
         if (!response?.ok) {
           setStatusMessage(response?.message ?? 'Unable to start game')
           return
@@ -35,6 +38,9 @@ export default function TitleScreen() {
 
   return (
     <div className="title-screen">
+      <label htmlFor="user-name">Username:&#9;
+      <input id="user-name" name="user-name" type="text" placeholder="Enter a username" autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+      </label>
       <label htmlFor="word-length">Word Length:&#9;
       <input id="word-length" name="word-length" type="number" min="5" max="12" placeholder="6" />
       </label>

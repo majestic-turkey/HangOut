@@ -1,13 +1,22 @@
 /**
 * Server for multiplayer Hangman game using WebSockets
 */
+
+// Packages
 import express from 'express';
 import http from 'http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { nanoid } from 'nanoid';
 import { Server } from 'socket.io';
-import { initDB, saveGameState } from './src/db.ts';
+
+// Helpers
+import {
+    addChatMessage,
+    fetchChatMessages,
+    initDB,
+    saveGameState,
+    clearChatMessages } from './src/db.ts';
 import GameManager from './src/gameManager.ts';
 import type { GameSession } from './src/types.ts';
 
@@ -89,7 +98,8 @@ io.on('connection', async (socket) => {
     socket.on('new_game', async (payload, maxAttempts = 6) => {
         const wordLength = Number.isInteger(payload?.wordLength) ? payload.wordLength : 6;
         const requestedMaxAttempts = Number.isInteger(maxAttempts) ? maxAttempts : 6;
-        console.log(`New game started by ${socket.id} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
+        const userName = typeof payload?.userName === 'string' && payload.userName.trim() ? payload.userName.trim() : 'Guest';
+        console.log(`New game started by ${userName} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
         try {
 
             // Initialize a new game
@@ -112,6 +122,8 @@ io.on('connection', async (socket) => {
             // Join the socket to a room with the game ID so that messages can be broadcast to all players in the same game
             await socket.join(gameId);
             socket.data.gameId = gameId;
+            socket.data.userName = userName;
+            gameManager.addOrUpdatePlayer(socket.id, userName);
 
             // And finally emit the initial masked word to the clients
             io.to(gameId).emit("masked_word", createPayload(gameManager));
@@ -122,22 +134,35 @@ io.on('connection', async (socket) => {
     });
 
     // Listen for join game requests from clients
-    socket.on('join_game', async (gameId, ack) => {
-        console.log(`User ${socket.id} is trying to join game ${gameId}`);
+    socket.on('join_game', async (payload, ack) => {
+        const { gameId, userName } = payload;
+        console.log(`User ${userName} (${socket.id}) is trying to join game ${gameId}`);
         const game = findGameById(typeof gameId === 'string' ? gameId : undefined);
         if (!game) return ack?.({ ok: false, message: "Game not found" });
 
         await socket.join(game.id);
         socket.data.gameId = game.id;
+        const normalizedUserName = typeof userName === 'string' && userName.trim() ? userName.trim() : 'Guest';
+        socket.data.userName = normalizedUserName;
+        game.manager.addOrUpdatePlayer(socket.id, normalizedUserName);
         io.to(game.id).emit("player_joined", {
+            userName: normalizedUserName,
             socketId: socket.id
         });
 
-        // Add the player to the game and send them the current masked word
+        // Add the player to the game and send them the current masked word and chat
         game.players.add(socket.id);
         socket.emit("masked_word", createPayload(game.manager));
         ack?.({ ok: true, message: "Joined game successfully" });
     })
+
+    socket.on('get_chat_history', async () => {
+        const gameId = socket.data.gameId;
+        if (!gameId) return;
+
+        const chatMessages = await fetchChatMessages(gameId);
+        socket.emit('incoming_message', chatMessages);
+    });
 
     // Restart the current game for all players in the same room.
     socket.on('continue_game', async (ack) => {
@@ -201,8 +226,28 @@ io.on('connection', async (socket) => {
             });
             game.manager.winnerId = game.manager.gameWon ? socket.id : undefined;
             await saveGameState(game.manager);
+            await clearChatMessages(game.manager.gameId);
         }
     });
+
+    // Listen for chat messages, save them to the database and broadcast
+    socket.on('sent_message', async (message) => {
+        const gameId = socket.data.gameId;
+        if (!gameId) return;
+        const normalizedMessage = typeof message === 'string' ? message.trim() : '';
+        if (!normalizedMessage) return;
+        const game = games.get(gameId);
+        const userName = typeof socket.data.userName === 'string' && socket.data.userName.trim()
+            ? socket.data.userName.trim()
+            : game?.players.has(socket.id)
+                ? game.manager.getPlayerName(socket.id)
+                : 'Guest';
+        const chatMessage = { socketId: socket.id, userName, message: normalizedMessage };
+
+        await addChatMessage(gameId, socket.id, userName, normalizedMessage);
+        io.to(gameId).emit('incoming_message', chatMessage);
+    });
+
 
     // Listen for client disconnects
     socket.on('disconnect', () => {
