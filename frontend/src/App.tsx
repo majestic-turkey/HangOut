@@ -8,6 +8,8 @@ import GameBoard from './components/GameBoard'
 function App(): React.ReactElement {
   // Use state to manage the game state
   const [gameState, setGameState] = React.useState<GameState | null>(null)
+  const [flashLetter, setFlashLetter] = React.useState<string | null>(null)
+  const [flashPulseId, setFlashPulseId] = React.useState(0)
 
   // Game state logging
   React.useEffect(() => {
@@ -27,7 +29,12 @@ function App(): React.ReactElement {
 
   // Masked word handler (also handles guesses)
   React.useEffect(() => {
-    const handleMaskedWord = (payload: { gameState?: GameState; maskedWord?: string; attemptsLeft?: number }) => {
+    const handleMaskedWord = (payload: { gameState?: GameState; maskedWord?: string; attemptsLeft?: number; newlyRevealedLetter?: string }) => {
+      if (payload?.newlyRevealedLetter) {
+        setFlashLetter(payload.newlyRevealedLetter.toLowerCase())
+        setFlashPulseId((prev) => prev + 1)
+      }
+
       if (payload?.gameState) {
 
         // Rehydrate sets from arrays if necessary
@@ -65,14 +72,45 @@ function App(): React.ReactElement {
       }
   }, [])
 
-  return (<>
-    <h1>Hang Out!</h1>
-    <div className="game-container">
-      {gameState === null && <TitleScreen />}
-      {gameState && <GameBoard state={gameState} />}
-      {gameState?.gameId ? <p>Game ID: {gameState.gameId}</p> : null}
+  React.useEffect(() => {
+    if (!flashLetter) return
+
+    const timer = window.setTimeout(() => {
+      setFlashLetter(null)
+    }, 420)
+
+    return () => window.clearTimeout(timer)
+  }, [flashLetter, flashPulseId])
+
+  // Reveal word when game is over
+  React.useEffect(() => {
+    const handleGameOver = (payload: { word: string }) => {
+      setGameState((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          maskedWord: payload.word
+        }
+      })
+    }
+
+    socket.on('game_over', handleGameOver)
+
+    return () => {
+      socket.off('game_over', handleGameOver)
+    }
+  }, [])
+
+  return (
+    <div className="app-shell">
+      <h1 className="app-title">Hang Out!</h1>
+      <div className="game-container">
+        {gameState === null && <TitleScreen />}
+        {gameState && <GameBoard state={gameState} flashLetter={flashLetter} flashPulseId={flashPulseId} />}
+        {gameState?.gameId ? <p className="game-id">Game ID: {gameState.gameId}</p> : null}
+      </div>
     </div>
-  </>)
+  )
 }
 
 export default App

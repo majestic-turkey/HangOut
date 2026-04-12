@@ -38,16 +38,21 @@ export default function TitleScreen() {
 
   return (
     <div className="title-screen">
-      <label htmlFor="user-name">Username:&#9;
+      <h2>Start Or Join A Room</h2>
+      <label className="form-field" htmlFor="user-name">
+      <span>Username</span>
       <input id="user-name" name="user-name" type="text" placeholder="Enter a username" autoCapitalize="off" autoCorrect="off" spellCheck={false} />
       </label>
-      <label htmlFor="word-length">Word Length:&#9;
+      <label className="form-field" htmlFor="word-length">
+      <span>Word Length</span>
       <input id="word-length" name="word-length" type="number" min="5" max="12" placeholder="6" />
       </label>
-      <label htmlFor="max-attempts">Max Attempts:&#9;
+      <label className="form-field" htmlFor="max-attempts">
+      <span>Max Attempts</span>
       <input id="max-attempts" name="max-attempts" type="number" min="1" max="26" placeholder="6" />
       </label>
-      <label htmlFor="game-id">Game ID:&#9;
+      <label className="form-field" htmlFor="game-id">
+      <span>Game ID (optional)</span>
       <input
         id="game-id"
         name="game-id"
@@ -60,7 +65,7 @@ export default function TitleScreen() {
       </label>
 
       <button className="start-button" onClick={handleStartGame}>Start Game</button>
-      {statusMessage ? <p>{statusMessage}</p> : null}
+      {statusMessage ? <p className="title-status">{statusMessage}</p> : null}
     </div>
   )
 }
