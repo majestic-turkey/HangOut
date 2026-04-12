@@ -204,6 +204,14 @@ io.on('connection', async (socket) => {
         }
     });
 
+    // Listen for chat messages and broadcast them to all players in the same game
+    socket.on('sent_message', (message) => {
+        const gameId = socket.data.gameId;
+        if (!gameId) return;
+        io.to(gameId).emit('incoming_message', { socketId: socket.id, message });
+    });
+
+
     // Listen for client disconnects
     socket.on('disconnect', () => {
         console.log(`User ${socket.id} disconnected`);

@@ -1,11 +1,25 @@
-import { useState } from 'react'
+import React from 'react'
 import type {KeyboardProps} from '../types.ts'
 import { socket } from '../socket.ts'
 
 export default function Keyboard({ state }: KeyboardProps) {
-    const [statusMessage, setStatusMessage] = useState<string | null>(null)
+    const [statusMessage, setStatusMessage] = React.useState<string | null>(null)
     const keys = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
     const isGameOver = state.gameWon || state.attemptsLeft <= 0;
+
+    React.useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (document.activeElement?.id === 'chat-input') return
+            if (!/^[a-z]$/i.test(event.key)) return
+            console.log('Key pressed:', event.key)
+            socket.emit('keypress', event.key)
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown)
+        }
+    }, [])
 
     const handleContinueGame = () => {
         socket.emit('continue_game', (response?: { ok?: boolean; message?: string }) => {
@@ -21,7 +35,7 @@ export default function Keyboard({ state }: KeyboardProps) {
     // Render keyboard keys
     const keyEls = keys.map(row => {
         return (
-        <div key={row} className="keyboard-row">
+        <div key={row} id="keyboard" className="keyboard-row">
             {row.split('').map(key => {
                 const isGuessed = state.guessedLetters.has(key);
                 const isWrong = state.wrongLetters.has(key);

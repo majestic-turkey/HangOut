@@ -3,30 +3,49 @@ import { socket } from '../socket'
 
 export default function Chat () {
     const [chatInput, setChatInput] = React.useState('');
+    const [chatMessages, setChatMessages] = React.useState<{ socketId: string, message: string }[]>([]);
 
+    // Chat message sending
     React.useEffect(() => {
         const handleChatMessage = (message: string) => {
-            socket.emit('chat_message', message);
+            socket.emit('sent_message', message);
         }
 
-        socket.on('chat_message', handleChatMessage);
+        socket.on('sent_message', handleChatMessage);
         return () => {
-            socket.off('chat_message', handleChatMessage);
+            socket.off('sent_message', handleChatMessage);
         }
     }, []);
 
+    // Chat message listener
+    React.useEffect(() => {
+        const handleChatMessage = (data: { socketId: string, message: string }) => {
+            console.log(`Chat message from ${data.socketId}: ${data.message}`);
+            setChatMessages((prev) => [...prev, data]);
+        }
+
+        socket.on('incoming_message', handleChatMessage);
+        return () => {
+            socket.off('incoming_message', handleChatMessage);
+        }
+    }, []);
 
     function sendChat() {
         const message = chatInput.trim();
         if (!message) return;
-        socket.emit('chat_message', message);
+        socket.emit('sent_message', message);
         setChatInput('');
     }
 
     return (<>
         <div className="chat">
-            <p>Chat component coming soon!</p>
+            {chatMessages.map((msg, index) => (
+                <p key={index} className="chat-message"><strong>{msg.socketId}:</strong> {msg.message}</p>
+            ))}
         </div>
-        <input id="chat-input" type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} disabled /><button onClick={() => sendChat()} disabled>Send</button>
+        <form onSubmit={(e) => { e.preventDefault(); sendChat(); }}>
+            <input id="chat-input" type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendChat()} />
+            <button type="submit">Send</button>
+        </form>
     </>)
 }
