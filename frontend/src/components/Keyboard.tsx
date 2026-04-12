@@ -21,7 +21,7 @@ export default function Keyboard({ state }: KeyboardProps) {
     // Render keyboard keys
     const keyEls = keys.map(row => {
         return (
-        <div key={row}>
+        <div key={row} className="keyboard-row">
             {row.split('').map(key => {
                 const isGuessed = state.guessedLetters.has(key);
                 const isWrong = state.wrongLetters.has(key);
@@ -35,11 +35,11 @@ export default function Keyboard({ state }: KeyboardProps) {
         );
     });
 
-    return (<>
-        <div>
+    return (<> 
+        <div className="keyboard">
             {keyEls}
         </div>
-        {(isGameOver) && <button onClick={handleContinueGame}>New Game</button>}
-        {statusMessage ? <p>{statusMessage}</p> : null}
+        {(isGameOver) && <button className="keyboard-action" onClick={handleContinueGame}>New Game</button>}
+        {statusMessage ? <p className="keyboard-status">{statusMessage}</p> : null}
     </>);
 }

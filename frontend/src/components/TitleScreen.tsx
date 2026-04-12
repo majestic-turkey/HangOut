@@ -23,22 +23,36 @@ export default function TitleScreen() {
       });
     } else {
       setStatusMessage(null)
-      socket.emit('new_game', { wordLength }, maxAttempts);
+      socket.emit('new_game', { wordLength, maxAttempts }, (response?: { ok?: boolean; message?: string }) => {
+        if (!response?.ok) {
+          setStatusMessage(response?.message ?? 'Unable to start game')
+          return
+        }
+        setStatusMessage('Game started successfully')
+      });
     }
   }
 
   return (
     <div className="title-screen">
-      <input id="word-length" type="number" min="5" max="12" placeholder="Word Length (5-12)" />
-      <input id="max-attempts" type="number" min="1" max="26" placeholder="Max Attempts (default 6)" />
+      <label htmlFor="word-length">Word Length:&#9;
+      <input id="word-length" name="word-length" type="number" min="5" max="12" placeholder="6" />
+      </label>
+      <label htmlFor="max-attempts">Max Attempts:&#9;
+      <input id="max-attempts" name="max-attempts" type="number" min="1" max="26" placeholder="6" />
+      </label>
+      <label htmlFor="game-id">Game ID:&#9;
       <input
         id="game-id"
+        name="game-id"
         type="text"
-        placeholder="Game ID (optional, for joining existing game)"
+        placeholder="Join existing game"
         autoCapitalize="off"
         autoCorrect="off"
         spellCheck={false}
       />
+      </label>
+
       <button className="start-button" onClick={handleStartGame}>Start Game</button>
       {statusMessage ? <p>{statusMessage}</p> : null}
     </div>

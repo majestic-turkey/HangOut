@@ -61,7 +61,7 @@ await initDB();
 
 // Generate a unique 8-character game ID
 function createGameId() {
-    return nanoid(8);
+    return nanoid(4);
 }
 
 function findGameById(input: string | undefined) {
