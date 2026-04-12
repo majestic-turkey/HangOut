@@ -13,6 +13,7 @@ export async function openDB() {
     });
 }
 
+// Create a new game
 export async function createGame(word: string, gameId: string) {
     const db = await openDB();
     try {
@@ -24,12 +25,65 @@ export async function createGame(word: string, gameId: string) {
     }
 }
 
+// Add a chat message
+export async function addChatMessage(gameId: string, userId: string, userName: string, message: string) {
+    const db = await openDB();
+    try {
+        await db.run(
+            'INSERT INTO chats (game_id, user_id, user_name, message, sent_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+            [gameId, userId, userName, message]
+        );
+    } catch (error) {
+        console.error('Error adding chat message:', error);
+    } finally {
+        await db.close();
+    }
+}
+
+// Fetch chat messages for a specific game
+export async function fetchChatMessages(gameId: string) {
+    const db = await openDB();
+    try {
+        return await db.all(
+            `SELECT
+                user_id AS socketId,
+                COALESCE(user_name, 'Guest') AS userName,
+                message
+            FROM chats
+            WHERE game_id = ?
+            ORDER BY sent_at ASC`,
+            [gameId]
+        );
+    } catch (error) {
+        console.error('Error fetching chat messages:', error);
+        return [];
+    } finally {
+        await db.close();
+    }
+}
+
+// Clear a game's chat messages after the game ends
+export async function clearChatMessages(gameId: string) {
+    const db = await openDB();
+    try {
+        await db.run('DELETE FROM chats WHERE game_id = ?', [gameId]);
+    } catch (error) {
+        console.error('Error clearing chat messages:', error);
+    } finally {
+        await db.close();
+    }
+}
+
+
+
+// Save the current game state to the database
 export async function saveGameState(gameState: GameState) {
     const db = await openDB();
     try {
         if (gameState.gameWon) {
             await db.run('UPDATE games SET winner_id = ?, word = ?, game_id = ? WHERE game_id = ?', [gameState.winnerId, gameState.word, gameState.gameId, gameState.gameId]);
             await db.run('UPDATE users SET wins = wins + 1 WHERE id = ?', [gameState.winnerId]);
+            await clearChatMessages(gameState.gameId);
             return true;
         } else if (gameState.word && !gameState.winnerId) {
             await db.run('UPDATE games SET word = ?, game_id = ?, played_at = CURRENT_TIMESTAMP WHERE game_id = ?', [gameState.word, gameState.gameId, gameState.gameId]);
@@ -44,6 +98,8 @@ export async function saveGameState(gameState: GameState) {
 
 }
 
+
+// Initialize the database and create tables if they don't exist
 export async function initDB() {
     const db = await openDB();
     try {
@@ -65,6 +121,21 @@ export async function initDB() {
         username TEXT NOT NULL UNIQUE,
         wins INTEGER DEFAULT 0
     )`);
+
+        // Create chats table
+        await db.exec(`CREATE TABLE IF NOT EXISTS chats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        game_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        user_name TEXT,
+        message TEXT NOT NULL,
+        sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (game_id) REFERENCES games(game_id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )`);
+
+        await db.exec('ALTER TABLE chats ADD COLUMN user_name TEXT').catch(() => undefined);
+
         console.log('Database setup complete.');
     } catch (error) {
         console.error('Error setting up database:', error);

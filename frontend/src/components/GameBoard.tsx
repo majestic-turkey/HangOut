@@ -5,8 +5,6 @@ import Chat from './Chat'
 
 export default function GameBoard({ state }: { state: GameState }) {
     
-
-
     return (
         <div>
             {state.gameWon && <Confetti wind={0.02} />}

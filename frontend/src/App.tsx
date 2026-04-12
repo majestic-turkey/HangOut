@@ -9,10 +9,6 @@ function App(): React.ReactElement {
   // Use state to manage the game state
   const [gameState, setGameState] = React.useState<GameState | null>(null)
 
-  // Use context to provide the game state to child components
-  const gameContext = React.createContext<GameState | null>(null)
-  const GameContext = gameContext.Provider
-
   // Game state logging
   React.useEffect(() => {
     console.log('gameState changed:', gameState)
@@ -72,11 +68,9 @@ function App(): React.ReactElement {
   return (<>
     <h1>Hang Out!</h1>
     <div className="game-container">
-      <GameContext value={gameState}>
-        {gameState === null && <TitleScreen />}
-        {gameState && <GameBoard state={gameState} />}
-        {gameState?.gameId ? <p>Game ID: {gameState.gameId}</p> : null}
-      </GameContext>
+      {gameState === null && <TitleScreen />}
+      {gameState && <GameBoard state={gameState} />}
+      {gameState?.gameId ? <p>Game ID: {gameState.gameId}</p> : null}
     </div>
   </>)
 }

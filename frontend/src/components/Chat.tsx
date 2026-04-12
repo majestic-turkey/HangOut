@@ -1,30 +1,26 @@
 import React from 'react'
 import { socket } from '../socket'
+import type { ChatMessage } from '../types'
 
 export default function Chat () {
     const [chatInput, setChatInput] = React.useState('');
-    const [chatMessages, setChatMessages] = React.useState<{ socketId: string, userName: string, message: string }[]>([]);
-
-    // Chat message sending
-    React.useEffect(() => {
-        const handleChatMessage = (message: string) => {
-            socket.emit('sent_message', message);
-        }
-
-        socket.on('sent_message', handleChatMessage);
-        return () => {
-            socket.off('sent_message', handleChatMessage);
-        }
-    }, []);
+    const [chatMessages, setChatMessages] = React.useState<ChatMessage[]>([]);
 
     // Chat message listener
     React.useEffect(() => {
-        const handleChatMessage = (data: { socketId: string, userName: string, message: string }) => {
+        const handleChatMessage = (data: ChatMessage | ChatMessage[]) => {
+            if (Array.isArray(data)) {
+                setChatMessages(data);
+                return;
+            }
+
             console.log(`Chat message from ${data.userName}: ${data.message}`);
             setChatMessages((prev) => [...prev, data]);
         }
 
         socket.on('incoming_message', handleChatMessage);
+        socket.emit('get_chat_history');
+
         return () => {
             socket.off('incoming_message', handleChatMessage);
         }
