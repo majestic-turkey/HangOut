@@ -23,4 +23,5 @@ export interface ChatMessage {
 export interface ConnectedPlayer {
     socketId: string;
     userName: string;
+    wins?: number;
 }

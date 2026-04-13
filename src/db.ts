@@ -14,7 +14,7 @@ export async function openDB() {
 }
 
 // Create a new game
-export async function createGame(word: string, gameId: string) {
+export async function createGame(word: string, gameId: string, userName: string) {
     const db = await openDB();
     try {
         await db.run('INSERT INTO games (word, game_id, played_at) VALUES (?, ?, CURRENT_TIMESTAMP)', [word, gameId]);
@@ -74,7 +74,49 @@ export async function clearChatMessages(gameId: string) {
     }
 }
 
+// Get the win count for a user by username
+export async function getPlayerWins(userName: string): Promise<number> {
+    const db = await openDB();
+    try {
+        const row = await db.get<{ wins: number }>('SELECT wins FROM users WHERE username = ?', [userName]);
+        return row?.wins ?? 0;
+    } catch (error) {
+        console.error('Error fetching player wins:', error);
+        return 0;
+    } finally {
+        await db.close();
+    }
+}
 
+// Look up a user by username, creating them if they don't exist
+export async function findOrCreateUser(userName: string): Promise<{ id: number; username: string; wins: number }> {
+    const db = await openDB();
+    try {
+        let row = await db.get<{ id: number; username: string; wins: number }>('SELECT id, username, wins FROM users WHERE username = ?', [userName]);
+        if (!row) {
+            const result = await db.run('INSERT INTO users (username) VALUES (?)', [userName]);
+            row = { id: result.lastID || 0, username: userName, wins: 0 };
+        }
+        return row || { id: 0, username: userName, wins: 0 };
+    } catch (error) {
+        console.error('Error finding or creating user:', error);
+        throw error;
+    } finally {
+        await db.close();
+    }
+}
+
+// Increment a user's win count by username
+export async function incrementPlayerWins(userName: string) {
+    const db = await openDB();
+    try {
+        await db.run('UPDATE users SET wins = wins + 1 WHERE username = ?', [userName]);
+    } catch (error) {
+        console.error('Error incrementing player wins:', error);
+    } finally {
+        await db.close();
+    }
+}
 
 // Save the current game state to the database
 export async function saveGameState(gameState: GameState) {
@@ -82,6 +124,10 @@ export async function saveGameState(gameState: GameState) {
     try {
         if (gameState.gameWon) {
             await db.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [gameState.winnerId, gameState.word, gameState.gameId]);
+            const user = await findOrCreateUser(gameState.getPlayerName(gameState.winnerId!));
+            if (user) {
+                await incrementPlayerWins(user.username);
+            }
             await clearChatMessages(gameState.gameId);
             return true;
         } else if (gameState.word && !gameState.winnerId) {
@@ -95,6 +141,18 @@ export async function saveGameState(gameState: GameState) {
         await db.close();
     }
 
+}
+
+// Allow deletion of a after 24 hours to prevent stale games from accumulating indefinitely
+export async function deleteOldGames() {
+    const db = await openDB();
+    try {
+        await db.run('DELETE FROM games WHERE played_at <= datetime("now", "-1 day")');
+    } catch (error) {
+        console.error('Error deleting old games:', error);
+    } finally {
+        await db.close();
+    }
 }
 
 
@@ -111,7 +169,7 @@ export async function initDB() {
         word TEXT NOT NULL,
         game_id TEXT NOT NULL,
         played_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    `);
+    )`);
 
         // Create users table
         await db.exec(`CREATE TABLE IF NOT EXISTS users (
@@ -129,7 +187,7 @@ export async function initDB() {
         message TEXT NOT NULL,
         sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (game_id) REFERENCES games(game_id)
-    `);
+    )`);
 
         const chatColumns = await db.all('PRAGMA table_info(chats)');
         const hasUserNameColumn = chatColumns.some((column: { name: string }) => column.name === 'user_name');

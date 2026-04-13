@@ -16,7 +16,10 @@ import {
     fetchChatMessages,
     initDB,
     saveGameState,
-    clearChatMessages
+    clearChatMessages,
+    getPlayerWins,
+    findOrCreateUser,
+    deleteOldGames
 } from './src/db.ts';
 import GameManager from './src/gameManager.ts';
 import type { GameSession } from './src/types.ts';
@@ -63,15 +66,23 @@ function createPayload(manager: GameSession['manager'], overrides?: { maskedWord
     };
 }
 
-function getConnectedPlayers(game: GameSession) {
-    return Array.from(game.manager.players).map((player) => ({
-        socketId: player.socketId,
-        userName: player.userName
-    }));
+async function getConnectedPlayers(game: GameSession) {
+    for (const player of game.manager.players) {
+        await findOrCreateUser(player.userName).catch((error) => {
+            console.error('Error ensuring user exists in database:', error);
+        });
+    }
+    return Promise.all(
+        Array.from(game.manager.players).map(async (player) => ({
+            socketId: player.socketId,
+            userName: player.userName,
+            wins: await getPlayerWins(player.userName)
+        }))
+    );
 }
 
-function emitPlayerList(game: GameSession) {
-    io.to(game.id).emit('player_list', getConnectedPlayers(game));
+async function emitPlayerList(game: GameSession) {
+    io.to(game.id).emit('player_list', await getConnectedPlayers(game));
 }
 
 // Serve static elements
@@ -122,6 +133,7 @@ io.on('connection', async (socket) => {
                 gameId = createGameId();
             }
             await gameManager.startNewGame(gameId, wordLength);
+            await findOrCreateUser(userName);
 
             // Add game to registry of games
             const gameSession: GameSession = {
@@ -159,6 +171,7 @@ io.on('connection', async (socket) => {
         const normalizedUserName = typeof userName === 'string' && userName.trim() ? userName.trim() : 'Guest';
         socket.data.userName = normalizedUserName;
         game.manager.addOrUpdatePlayer(socket.id, normalizedUserName);
+        await findOrCreateUser(normalizedUserName);
 
         // Add the player to the game and send them the current masked word and chat
         game.players.add(socket.id);
@@ -167,12 +180,12 @@ io.on('connection', async (socket) => {
         ack?.({ ok: true, message: "Joined game successfully" });
     })
 
-    socket.on('get_player_list', () => {
+    socket.on('get_player_list', async () => {
         const gameId = socket.data.gameId;
         const game = games.get(gameId);
         if (!game) return;
 
-        socket.emit('player_list', getConnectedPlayers(game));
+        socket.emit('player_list', await getConnectedPlayers(game));
     });
 
     socket.on('get_chat_history', async () => {
@@ -251,6 +264,7 @@ io.on('connection', async (socket) => {
             game.manager.winnerId = game.manager.gameWon ? socket.id : undefined;
             await saveGameState(game.manager);
             await clearChatMessages(game.manager.gameId);
+            await deleteOldGames();
         }
     });
 

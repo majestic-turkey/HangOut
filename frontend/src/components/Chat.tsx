@@ -6,6 +6,7 @@ export default function Chat() {
     const [chatInput, setChatInput] = React.useState('');
     const [chatMessages, setChatMessages] = React.useState<ChatMessage[]>([]);
     const [connectedPlayers, setConnectedPlayers] = React.useState<ConnectedPlayer[]>([]);
+    const [hoveredPlayer, setHoveredPlayer] = React.useState<string | null>(null);
 
     // Chat message listener
     React.useEffect(() => {
@@ -53,7 +54,18 @@ export default function Chat() {
                 <h3>Players:</h3>
                 <ul>
                     {connectedPlayers.map((player) => (
-                        <li key={player.socketId}>{player.userName}</li>
+                        <li
+                            key={player.socketId}
+                            onMouseEnter={() => setHoveredPlayer(player.socketId)}
+                            onMouseLeave={() => setHoveredPlayer(null)}
+                        >
+                            {player.userName}
+                            {hoveredPlayer === player.socketId && (
+                                <div className="win-modal">
+                                    <p>{player.wins ?? 0} wins</p>
+                                </div>
+                            )}
+                        </li>
                     ))}
                 </ul>
             </div>

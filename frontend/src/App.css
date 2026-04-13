@@ -417,8 +417,8 @@
 
 @keyframes petal-fall {
   0%   { transform: translateY(0)   rotate(0deg);   opacity: 0.92; }
-  40%  { transform: translateY(12px) rotate(-15deg); opacity: 0.7; }
-  100% { transform: translateY(38px) rotate(-30deg); opacity: 0.35; }
+  40%  { transform: translateY(20px) rotate(-15deg); opacity: 0.7; }
+  100% { transform: translateY(50px) rotate(-30deg); opacity: 0.35; }
 }
 
 .chat {
@@ -458,6 +458,7 @@
   flex: 0 0 clamp(150px, 18%, 220px);
   text-align: left;
   overflow-y: auto;
+  cursor: default;
 }
 
 .player-list h3 {
@@ -474,6 +475,7 @@
   list-style: none;
   font-size: 12px;
   margin-bottom: 4px;
+  position: relative;
 }
 
 .chat-form {
@@ -519,6 +521,19 @@
 
 .letter-flash {
   animation: letter-flash 420ms ease-out;
+}
+
+.win-modal {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-bg);
+  color: var(--accent);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 @keyframes letter-flash {
