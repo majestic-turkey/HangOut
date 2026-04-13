@@ -10,6 +10,8 @@ function App(): React.ReactElement {
   const [gameState, setGameState] = React.useState<GameState | null>(null)
   const [flashLetter, setFlashLetter] = React.useState<string | null>(null)
   const [flashPulseId, setFlashPulseId] = React.useState(0)
+  const [connected, setConnected] = React.useState(false)
+  const [showConnectionModal, setShowConnectionModal] = React.useState(false)
 
   // Game state logging
   React.useEffect(() => {
@@ -20,11 +22,32 @@ function App(): React.ReactElement {
   React.useEffect(() => {
     socket.on('connect', () => {
       console.log('Connected to server')
+      setConnected(true)
+      setShowConnectionModal(true)
     })
     return () => {
       socket.off('connect');
     };
   }, []);
+
+  // Display the connection modal for 2 seconds, display whether we're connected or not
+  React.useEffect(() => {
+    if (!connected) return
+    const timer = window.setTimeout(() => {
+      setShowConnectionModal(false)
+    }, 2000)
+    return () => window.clearTimeout(timer)
+  }, [connected])
+  
+  const connectionModal = (
+    showConnectionModal && (
+      <div className="connection-modal">
+        <div className="connection-content">
+          <p>{connected ? '🟢 Connected' : '🔴 Disconnected — "Reconnecting...'}</p>
+        </div>
+      </div>
+    )
+  );
 
 
   // Masked word handler (also handles guesses)
@@ -103,6 +126,7 @@ function App(): React.ReactElement {
 
   return (
     <div className="app-shell">
+      {connectionModal}
       <h1 className="app-title">Hang Out!</h1>
       <div className="game-container">
         {gameState === null && <TitleScreen />}
