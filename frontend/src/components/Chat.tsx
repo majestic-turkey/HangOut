@@ -62,7 +62,7 @@ export default function Chat() {
                             {player.userName}
                             {hoveredPlayer === player.socketId && (
                                 <div className="win-modal">
-                                    <p>{player.wins ?? 0} wins</p>
+                                    <p>{player.wins ?? 0} win{(player.wins ?? 0) !== 1 ? 's' : ''}</p>
                                 </div>
                             )}
                         </li>
