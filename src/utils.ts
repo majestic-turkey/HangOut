@@ -3,7 +3,7 @@
  */
 
 import { getPlayerWins } from "./db/db.ts";
-import { GameSession } from "./types.ts";
+import type { GameSession } from "./types.ts";
 import { findOrCreateUser } from "./db/db.ts";
 import { nanoid } from "nanoid";
 

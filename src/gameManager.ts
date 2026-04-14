@@ -4,7 +4,6 @@
 
 import { getRandomWord } from './wordService.ts';
 import type { GameState, Player } from './types.ts';
-import { saveGameState, createGame } from './db/db.ts';
 
 export default class GameManager implements GameState {
     word: string;                   // The word to be guessed
@@ -30,7 +29,7 @@ export default class GameManager implements GameState {
     }
 
     // Start a new game by fetching a random word and resetting the game state
-    async startNewGame(id: string, wordLength?: number): Promise<void> {
+    startNewGame(id: string, wordLength?: number): void {
         const randomWord = getRandomWord(wordLength);
         if (randomWord) {
             this.word = randomWord.toLowerCase();
@@ -41,7 +40,6 @@ export default class GameManager implements GameState {
             this.winnerId = undefined;
             this.gameId = id;
         }
-        await createGame(this.word, this.gameId);
     }
 
     // Mask the word by replacing unguessed letters with underscores
@@ -87,7 +85,7 @@ export default class GameManager implements GameState {
     }
 
     // Process a letter guess, update game state accordingly, and return whether the guess was valid
-    async guessLetter(letter: string): Promise<string> {
+    guessLetter(letter: string): string {
         letter = letter.toLowerCase();
         if (this.guessedLetters.has(letter) || this.attempts >= this.maxAttempts) {
             return JSON.stringify({ accepted: false, message: "Invalid guess or game over" });
@@ -100,9 +98,6 @@ export default class GameManager implements GameState {
 
         // Check if the game has been won
         this.gameWon = this.word.split('').every((char) => this.guessedLetters.has(char));
-
-        // Save game state and return the result of the guess
-        await saveGameState(this);
 
         return JSON.stringify({
             accepted: true,

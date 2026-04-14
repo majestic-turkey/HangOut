@@ -17,12 +17,13 @@ import {
     clearChatMessages,
     saveGameState,
     deleteOldGames,
-    findOrCreateUser
+    findOrCreateUser,
+    createGame
 } from '../db/db.ts';
 
 import GameManager from '../gameManager.ts';
 import { Server } from 'socket.io';
-import SocketIO from 'socket.io';
+import type SocketIO from 'socket.io';
 
 // Initialize game registry
 const games = new Map<string, GameSession>();
@@ -47,7 +48,8 @@ export function setupSocketHandlers(io: Server) {
                     console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
                     gameId = createGameId();
                 }
-                await gameManager.startNewGame(gameId, wordLength);
+                gameManager.startNewGame(gameId, wordLength);
+                await createGame(gameManager.word, gameManager.gameId);
                 await findOrCreateUser(userName);
 
                 // Add game to registry of games
@@ -121,7 +123,8 @@ export function setupSocketHandlers(io: Server) {
 
             const nextWordLength = game.manager.word.length || undefined;
             try {
-                await game.manager.startNewGame(game.id, nextWordLength);
+                game.manager.startNewGame(game.id, nextWordLength);
+                await createGame(game.manager.word, game.manager.gameId);
             } catch (error) {
                 console.error('Error starting new game:', error);
                 return ack?.({ ok: false, message: 'Failed to start new game' });
@@ -155,11 +158,11 @@ export function setupSocketHandlers(io: Server) {
             }
 
             // Make the guess and update the game state
-            const changed = JSON.parse(await game.manager.guessLetter(key.toLowerCase().trim()));
+            const changed = JSON.parse(game.manager.guessLetter(key.toLowerCase().trim()));
             if (!changed.accepted) return; // If the guess was invalid, ignore it
-
+            
             console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
-
+            
             // Broadcast the updated game state to all players in the game
             io.to(gameId).emit("masked_word", {
                 ...changed,
@@ -177,10 +180,10 @@ export function setupSocketHandlers(io: Server) {
                     word: game.manager.word
                 });
                 game.manager.winnerId = game.manager.gameWon ? socket.id : undefined;
-                await saveGameState(game.manager);
                 await clearChatMessages(game.manager.gameId);
                 await deleteOldGames();
             }
+            await saveGameState(game.manager);
         });
 
         // Listen for chat messages, save them to the database and broadcast
