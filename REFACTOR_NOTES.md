@@ -14,7 +14,7 @@ The server.ts and src/db.ts files have grown significantly in size and complexit
 - [ ] **Create services** for player list enrichment:
   - Wins lookup
   - FindOrCreateUser
-- [ ] **Decouple GameManager** from persistence
+- [X] **Decouple GameManager** from persistence
 - [ ] Suggestions for auth next:
   - Introduce AuthService
   - Separate user identity from display name

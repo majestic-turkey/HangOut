@@ -2,7 +2,7 @@
  * Manages game state and logic for the Hangman game
  */
 
-import { getRandomWord } from './wordService.ts';
+import { getRandomWord } from './services/wordService.ts';
 import type { GameState, Player } from './types.ts';
 
 export default class GameManager implements GameState {
