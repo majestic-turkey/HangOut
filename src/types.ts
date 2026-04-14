@@ -10,7 +10,6 @@ export interface GameState {
     guessLetter: (key: string) => string;
     startNewGame: (id: string, wordLength?: number) => void;
     wrongLetters: Set<string>;
-    reset: () => void;
     getPlayerName: (socketId: string) => string;
     addOrUpdatePlayer: (socketId: string, userName: string) => void;
     removePlayer: (socketId: string) => void;
@@ -45,7 +44,6 @@ export interface Ack {
 }
 
 export interface SaveStateProps {
-    playerName: string;
     gameId: string;
     winnerId?: string;
     word: string;

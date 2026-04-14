@@ -184,7 +184,6 @@ export function setupSocketHandlers(io: Server) {
                 await deleteOldGames();
             }
             await saveGameState({
-                playerName: socket.data.userName,
                 gameId: game.manager.gameId,
                 winnerId: game.manager.winnerId,
                 word: game.manager.word,
@@ -197,7 +196,7 @@ export function setupSocketHandlers(io: Server) {
             const gameId = socket.data.gameId;
             if (!gameId) return;
             const normalizedMessage = typeof message === 'string' ? message.trim() : '';
-            if (!normalizedMessage) return;
+            if (!normalizedMessage || normalizedMessage.length > 200) return;
             const game = games.get(gameId);
             const userName = typeof socket.data.userName === 'string' && socket.data.userName.trim()
                 ? socket.data.userName.trim()

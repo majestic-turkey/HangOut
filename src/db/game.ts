@@ -25,7 +25,6 @@ export async function saveGameState({ gameId, winnerId, word, gameWon }: SaveSta
                 await incrementPlayerWins(user.username);
                 await DataBase.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [user.username, word, gameId]);
             }
-            await clearChatMessages(gameId);
             return true;
         } else if (word && !winnerId) {
             await DataBase.run('UPDATE games SET word = ?, played_at = CURRENT_TIMESTAMP WHERE game_id = ?', [word, gameId]);

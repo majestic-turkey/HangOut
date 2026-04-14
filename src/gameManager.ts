@@ -47,15 +47,6 @@ export default class GameManager implements GameState {
         return this.word.split('').map((char) => (this.guessedLetters.has(char) ? char : '_')).join(' ');
     }
 
-    // Get the current game state
-    getGameState(): GameState {
-        return {
-            ...this,
-            maskedWord: this.getMaskedWord(),
-            attemptsLeft: this.maxAttempts - this.attempts,
-        } as GameState;
-    }
-
     // Retrieve a player name
     getPlayerName(socketId: string): string {
         const player = Array.from(this.players).find((p) => p.socketId === socketId);
@@ -71,17 +62,6 @@ export default class GameManager implements GameState {
 
     removePlayer(socketId: string): void {
         this.players = new Set(Array.from(this.players).filter((p) => p.socketId !== socketId));
-    }
-
-    // Reset the game state to start a new game
-    reset(): void {
-        this.word = getRandomWord(this.word.length);
-        this.guessedLetters.clear();
-        this.wrongLetters.clear();
-        this.attempts = 0;
-        this.gameWon = false;
-        this.winnerId = undefined;
-        this.gameId += '-' + (Date.now() % 38); // Generate a new game ID by appending a timestamp
     }
 
     // Process a letter guess, update game state accordingly, and return whether the guess was valid

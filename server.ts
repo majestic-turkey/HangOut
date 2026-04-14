@@ -10,8 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 
 // Helpers
-import { initDB } from './src/db/db.ts';
-import DataBase from './src/db/db.ts';
+import DataBase, { initDB } from './src/db/db.ts';
 import { setupSocketHandlers} from './src/socket/socketHandlers.ts';
 
 // Load environment variables from .env file and set constants
