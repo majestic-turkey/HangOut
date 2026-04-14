@@ -53,20 +53,24 @@ export default function Chat() {
             <div className="player-list">
                 <h3>Players:</h3>
                 <ul>
-                    {connectedPlayers.map((player) => (
-                        <li
-                            key={player.socketId}
-                            onMouseEnter={() => setHoveredPlayer(player.socketId)}
-                            onMouseLeave={() => setHoveredPlayer(null)}
-                        >
-                            {player.userName}
-                            {hoveredPlayer === player.socketId && (
-                                <div className="win-modal">
-                                    <p>{player.wins ?? 0} win{(player.wins ?? 0) !== 1 ? 's' : ''}</p>
-                                </div>
-                            )}
-                        </li>
-                    ))}
+                    {connectedPlayers.map((player) => {
+                        const wins = player.wins ?? 0;
+
+                        return (
+                            <li
+                                key={player.socketId}
+                                onMouseEnter={() => setHoveredPlayer(player.socketId)}
+                                onMouseLeave={() => setHoveredPlayer(null)}
+                            >
+                                {player.userName}
+                                {hoveredPlayer === player.socketId && (
+                                    <div className="win-modal">
+                                        <p>{wins} win{wins !== 1 ? 's' : ''}</p>
+                                    </div>
+                                )}
+                            </li>
+                        );
+                    })}
                 </ul>
             </div>
         </div>

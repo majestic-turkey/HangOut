@@ -58,6 +58,7 @@ function shutdown() {
             console.error('Error closing database connection:', error);
         });
     });
+    process.exit(0);
 }
 
 process.on('SIGINT', shutdown);

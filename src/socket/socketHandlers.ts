@@ -189,8 +189,9 @@ export function setupSocketHandlers(io: Server) {
                 gameId: game.manager.gameId,
                 winnerId: game.manager.winnerId,
                 word: game.manager.word,
-                gameWon: game.manager.gameWon
-            });
+                gameWon: game.manager.gameWon,
+                game: game.manager
+            }); // Keep a record of the current game state to facilitate reconnections
         });
 
         // Listen for chat messages, save them to the database and broadcast
