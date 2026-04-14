@@ -20,10 +20,10 @@ export async function createGame(word: string, gameId: string) {
 export async function saveGameState(gameState: GameState) {
     try {
         if (gameState.gameWon) {
-            await DataBase.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [gameState.winnerId, gameState.word, gameState.gameId]);
             const user = await findOrCreateUser(gameState.getPlayerName(gameState.winnerId!));
             if (user) {
                 await incrementPlayerWins(user.username);
+                await DataBase.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [user.username, gameState.word, gameState.gameId]);
             }
             await clearChatMessages(gameState.gameId);
             return true;

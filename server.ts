@@ -49,8 +49,8 @@ server.listen(PORT, '0.0.0.0', () => {
 })
 
 // Gracefully handle server shutdown and close the database connection
-process.on('SIGINT', () => {
-    console.log('Received SIGINT. Shutting down server...');
+function shutdown() {
+    console.log('Shutting down server...');
     server.close(() => {
         console.log('Server closed');
         DataBase.close().then(() => {
@@ -59,4 +59,7 @@ process.on('SIGINT', () => {
             console.error('Error closing database connection:', error);
         });
     });
-});
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
