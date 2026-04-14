@@ -183,7 +183,13 @@ export function setupSocketHandlers(io: Server) {
                 await clearChatMessages(game.manager.gameId);
                 await deleteOldGames();
             }
-            await saveGameState(game.manager);
+            await saveGameState({
+                playerName: socket.data.userName,
+                gameId: game.manager.gameId,
+                winnerId: game.manager.winnerId,
+                word: game.manager.word,
+                gameWon: game.manager.gameWon
+            });
         });
 
         // Listen for chat messages, save them to the database and broadcast

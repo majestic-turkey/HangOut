@@ -43,3 +43,11 @@ export interface Ack {
     ok: boolean;
     message: string;
 }
+
+export interface SaveStateProps {
+    playerName: string;
+    gameId: string;
+    winnerId?: string;
+    word: string;
+    gameWon: boolean;
+}
