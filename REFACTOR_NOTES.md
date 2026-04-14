@@ -1,15 +1,16 @@
 # Refactor Plan Checklist
 
 ## Overview
+
 The server.ts and src/db.ts files have grown significantly in size and complexity, especially with recent features like win tracking and deleting old games. To enhance maintainability and scalability, we propose the following refactor plan:
 
-- [ ] **Separate db.ts into:**
+- [X] **Separate db.ts into:**
   - **client/migrate**
-  - **repos:** 
+  - **repos:**
     - chatRepo
     - userRepo
     - gameRepo
-- [ ] **Move Socket.IO handlers** out of server.ts into `src/socket/registerHandlers.ts`
+- [X] **Move Socket.IO handlers** out of server.ts
 - [ ] **Create services** for player list enrichment:
   - Wins lookup
   - FindOrCreateUser

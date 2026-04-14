@@ -1,3 +1,5 @@
+import SocketIO from 'socket.io';
+
 export interface GameState {
     word: string;
     guessedLetters: Set<string>;
@@ -28,4 +30,18 @@ export interface GameSession {
 export interface Player {
     socketId: string;
     userName: string;
+}
+
+export interface Payload {
+    maskedWord: string;
+    attemptsLeft: number;
+    gameState: GameState;
+    wordLength?: number;
+    userName?: string;
+    gameId?: string;
+}
+
+export interface Ack {
+    ok: boolean;
+    message: string;
 }

@@ -1,0 +1,48 @@
+/**
+ * Database module for managing game state
+ */
+
+import DataBase from './db.ts';
+import type { GameState } from '../types.ts';
+import { findOrCreateUser, incrementPlayerWins } from './users.ts';
+import { clearChatMessages } from './chat.ts';
+
+// Create a new game
+export async function createGame(word: string, gameId: string) {
+    try {
+        await DataBase.run('INSERT INTO games (word, game_id, played_at) VALUES (?, ?, CURRENT_TIMESTAMP)', [word, gameId]);
+    } catch (error) {
+        console.error('Error creating game:', error);
+    }
+}
+
+// Save the current game state to the database
+export async function saveGameState(gameState: GameState) {
+    try {
+        if (gameState.gameWon) {
+            await DataBase.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [gameState.winnerId, gameState.word, gameState.gameId]);
+            const user = await findOrCreateUser(gameState.getPlayerName(gameState.winnerId!));
+            if (user) {
+                await incrementPlayerWins(user.username);
+            }
+            await clearChatMessages(gameState.gameId);
+            return true;
+        } else if (gameState.word && !gameState.winnerId) {
+            await DataBase.run('UPDATE games SET word = ?, played_at = CURRENT_TIMESTAMP WHERE game_id = ?', [gameState.word, gameState.gameId]);
+            return true;
+        }
+    } catch (error) {
+        console.error('Error saving game state:', error);
+        return false;
+    }
+}
+
+// Allow deletion of a game after 24 hours to prevent stale games from accumulating indefinitely
+export async function deleteOldGames() {
+    try {
+        await DataBase.run('DELETE FROM games WHERE played_at <= datetime("now", "-1 day")');
+    } catch (error) {
+        console.error('Error deleting old games:', error);
+    }
+}
+
