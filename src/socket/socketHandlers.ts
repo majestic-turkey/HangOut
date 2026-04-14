@@ -25,6 +25,8 @@ import GameManager from '../gameManager.ts';
 import { Server } from 'socket.io';
 import type SocketIO from 'socket.io';
 
+const MAX_CHAT_LENGTH = 200; // Maximum length for chat messages to prevent abuse
+
 // Initialize game registry
 const games = new Map<string, GameSession>();
 
@@ -196,7 +198,7 @@ export function setupSocketHandlers(io: Server) {
             const gameId = socket.data.gameId;
             if (!gameId) return;
             const normalizedMessage = typeof message === 'string' ? message.trim() : '';
-            if (!normalizedMessage || normalizedMessage.length > 200) return;
+            if (!normalizedMessage || normalizedMessage.length > MAX_CHAT_LENGTH) return;
             const game = games.get(gameId);
             const userName = typeof socket.data.userName === 'string' && socket.data.userName.trim()
                 ? socket.data.userName.trim()

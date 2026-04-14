@@ -17,14 +17,16 @@ export async function createGame(word: string, gameId: string) {
 }
 
 // Save the current game state to the database
-export async function saveGameState({ gameId, winnerId, word, gameWon }: SaveStateProps) {
+export async function saveGameState({ gameId, winnerId, word, gameWon, game }: SaveStateProps) {
     try {
         if (gameWon) {
-            const user = winnerId ? await findOrCreateUser(winnerId) : null;
+            const winnerUsername = winnerId && game ? game.getPlayerName(winnerId) : null;
+            const user = winnerUsername ? await findOrCreateUser(winnerUsername) : null;
             if (user) {
                 await incrementPlayerWins(user.username);
                 await DataBase.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [user.username, word, gameId]);
             }
+            await clearChatMessages(gameId);
             return true;
         } else if (word && !winnerId) {
             await DataBase.run('UPDATE games SET word = ?, played_at = CURRENT_TIMESTAMP WHERE game_id = ?', [word, gameId]);

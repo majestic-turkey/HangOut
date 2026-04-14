@@ -39,7 +39,7 @@ function App(): React.ReactElement {
   // Display the connection modal for 2 seconds, display whether we're connected or not
   React.useEffect(() => {
     if (!connected) return
-    if (showConnectionModal && connected) {
+    if (showConnectionModal) {
       const timer = window.setTimeout(() => {
         setShowConnectionModal(false)
       }, 2000)
