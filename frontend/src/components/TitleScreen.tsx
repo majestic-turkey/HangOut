@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { socket } from '../socket'
 
-export default function TitleScreen() {
+export default function TitleScreen({ onGameInitiated }: { onGameInitiated: () => void }) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
   const handleStartGame = () => {
@@ -23,6 +23,7 @@ export default function TitleScreen() {
           return
         }
         setStatusMessage('Joined game successfully')
+        onGameInitiated()
       });
     } else {
       setStatusMessage(null)

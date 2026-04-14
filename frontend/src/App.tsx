@@ -25,19 +25,27 @@ function App(): React.ReactElement {
       setConnected(true)
       setShowConnectionModal(true)
     })
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server')
+      setConnected(false)
+      setShowConnectionModal(true)
+    })
     return () => {
       socket.off('connect');
+      socket.off('disconnect');
     };
   }, []);
 
   // Display the connection modal for 2 seconds, display whether we're connected or not
   React.useEffect(() => {
     if (!connected) return
-    const timer = window.setTimeout(() => {
-      setShowConnectionModal(false)
-    }, 2000)
-    return () => window.clearTimeout(timer)
-  }, [connected])
+    if (showConnectionModal && connected) {
+      const timer = window.setTimeout(() => {
+        setShowConnectionModal(false)
+      }, 2000)
+      return () => window.clearTimeout(timer)
+    }
+  }, [connected, showConnectionModal])
   
   const connectionModal = (
     showConnectionModal && (
@@ -129,7 +137,7 @@ function App(): React.ReactElement {
       {connectionModal}
       <h1 className="app-title">Hang Out!</h1>
       <div className="game-container">
-        {gameState === null && <TitleScreen />}
+        {gameState === null && <TitleScreen onGameInitiated={() => setShowConnectionModal(true)} />}
         {gameState && <GameBoard state={gameState} flashLetter={flashLetter} flashPulseId={flashPulseId} />}
         {gameState?.gameId ? <p className="game-id">Game ID: {gameState.gameId}</p> : null}
       </div>
