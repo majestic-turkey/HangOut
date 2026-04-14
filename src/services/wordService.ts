@@ -1,4 +1,4 @@
-import words from './data/words.json' with { type: 'json' };
+import words from '../data/words.json' with { type: 'json' };
 
 // const API_URL = 'https://random-words-api.kushcreates.com/api?language=en&length=7&type=lowercase&words=1';
 

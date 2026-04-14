@@ -3,7 +3,7 @@
  */
 
 import DataBase from './db.ts';
-import type { GameState } from '../types.ts';
+import type { GameState, SaveStateProps } from '../types.ts';
 import { findOrCreateUser, incrementPlayerWins } from './users.ts';
 import { clearChatMessages } from './chat.ts';
 
@@ -17,18 +17,19 @@ export async function createGame(word: string, gameId: string) {
 }
 
 // Save the current game state to the database
-export async function saveGameState(gameState: GameState) {
+export async function saveGameState({ gameId, winnerId, word, gameWon, game }: SaveStateProps) {
     try {
-        if (gameState.gameWon) {
-            await DataBase.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [gameState.winnerId, gameState.word, gameState.gameId]);
-            const user = await findOrCreateUser(gameState.getPlayerName(gameState.winnerId!));
+        if (gameWon) {
+            const winnerUsername = winnerId && game ? game.getPlayerName(winnerId) : null;
+            const user = winnerUsername ? await findOrCreateUser(winnerUsername) : null;
             if (user) {
                 await incrementPlayerWins(user.username);
+                await DataBase.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [user.username, word, gameId]);
             }
-            await clearChatMessages(gameState.gameId);
+            await clearChatMessages(gameId);
             return true;
-        } else if (gameState.word && !gameState.winnerId) {
-            await DataBase.run('UPDATE games SET word = ?, played_at = CURRENT_TIMESTAMP WHERE game_id = ?', [gameState.word, gameState.gameId]);
+        } else if (word && !winnerId) {
+            await DataBase.run('UPDATE games SET word = ?, played_at = CURRENT_TIMESTAMP WHERE game_id = ?', [word, gameId]);
             return true;
         }
     } catch (error) {

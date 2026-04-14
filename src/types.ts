@@ -1,5 +1,3 @@
-import SocketIO from 'socket.io';
-
 export interface GameState {
     word: string;
     guessedLetters: Set<string>;
@@ -9,10 +7,9 @@ export interface GameState {
     winnerId?: string;
     gameId: string;
     getMaskedWord: () => string;
-    guessLetter: (key: string) => Promise<string>;
-    startNewGame: (id: string, wordLength?: number) => Promise<void>;
+    guessLetter: (key: string) => string;
+    startNewGame: (id: string, wordLength?: number) => void;
     wrongLetters: Set<string>;
-    reset: () => void;
     getPlayerName: (socketId: string) => string;
     addOrUpdatePlayer: (socketId: string, userName: string) => void;
     removePlayer: (socketId: string) => void;
@@ -44,4 +41,13 @@ export interface Payload {
 export interface Ack {
     ok: boolean;
     message: string;
+}
+
+export interface SaveStateProps {
+    playerName?: string;
+    gameId: string;
+    winnerId?: string;
+    word: string;
+    gameWon: boolean;
+    game?: GameState;
 }
