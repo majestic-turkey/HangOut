@@ -36,6 +36,11 @@ function App(): React.ReactElement {
     };
   }, []);
 
+  // Call GET /me on initial load to establish session and get user info if available
+  React.useEffect(() => {
+    fetch('/me')
+  }, [])
+
   // Display the connection modal for 2 seconds, display whether we're connected or not
   React.useEffect(() => {
     if (!showConnectionModal) return

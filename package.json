@@ -36,6 +36,7 @@
         "nanoid": "^5.1.7",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
+        "react-router-dom": "^7.14.1",
         "socket.io": "^4.8.3",
         "sqlite": "^5.1.1",
         "sqlite3": "^6.0.1"
