@@ -10,14 +10,14 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 
 // Helpers and Middleware
-import { initDB } from './src/db/db.ts';
+import { initDB, createUser, verifyPassword } from './src/db/db.ts';
 import DataBase from './src/db/db.ts';
 import { setupSocketHandlers } from './src/socket/socketHandlers.ts';
 import session from 'express-session';
 
 declare module 'express-session' {
     interface SessionData {
-        userId?: string;
+        userId?: number;
     }
 }
 
@@ -42,6 +42,61 @@ app.use(session({ // Session tracking
     }
 }));
 app.use(express.static(distPath)); // Serve static files from the frontend build directory
+
+// API route for user authentication (login, register)
+app.post('/auth', express.json(), async (req, res) => {
+    const { username, password, authAction } = req.body;
+    try {
+        // Login logic: verify credentials and create session
+        if (authAction === 'login') {
+            try {
+            const userRecord = await verifyPassword(username, password);
+            if (userRecord) {
+                req.session.regenerate((err) => {
+                    if (err) {
+                        res.status(500).json({ ok: false, message: 'Internal server error' });
+                    } else {
+                        req.session.userId = userRecord.id;
+                        res.json({ ok: true, message: 'Login successful', userId: userRecord.id });
+                    }
+                });
+            } else {
+                res.status(401).json({ ok: false, message: 'Invalid username or password' });
+            }
+        } catch (error) {
+            if (error instanceof Error && /invalid/i.test(error.message)) {
+                res.status(401).json({ ok: false, message: error.message });
+            } else {
+                res.status(500).json({ ok: false, message: 'Internal server error' });
+            }
+        }
+        } else if (authAction === 'register') {
+            // Registration logic: create new user and create session
+            try {
+                const newUser = await createUser(username, password);
+                req.session.regenerate((err) => {
+                    if (err) {
+                        res.status(500).json({ ok: false, message: err.message || 'Internal server error' });
+                    } else {
+                        req.session.userId = newUser.id;
+                        res.json({ ok: true, message: 'Registration successful', userId: newUser.id });
+                    }
+                });
+            } catch (error) {
+                if (error instanceof Error && /already exists/i.test(error.message)) {
+                    res.status(409).json({ ok: false, message: error.message });
+                } else {
+                    res.status(500).json({ ok: false, message: 'Internal server error' });
+                }
+            }
+        } else {
+            res.status(400).json({ ok: false, message: 'Invalid authentication action' });
+        }
+    } catch (error) {
+        console.error('Authentication error:', error);
+        res.status(500).json({ ok: false, message: 'Internal server error' });
+    }
+});
 
 // Check for session userID
 app.get('/me', (req, res) => {
