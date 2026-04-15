@@ -5,6 +5,7 @@
 import { getPlayerWins } from "./db/db.ts";
 import type { GameSession } from "./types.ts";
 import { nanoid } from "nanoid";
+import { getConnectedPlayers } from "./services/playerService.ts";
 
 function createPayload(manager: GameSession['manager'], overrides?: { maskedWord?: string; attemptsLeft?: number }) {
     const maskedWord = overrides?.maskedWord ?? manager.getMaskedWord();

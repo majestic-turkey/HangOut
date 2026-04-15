@@ -9,10 +9,9 @@ export interface GameState {
     winnerId?: string;
     gameId: string;
     getMaskedWord: () => string;
-    guessLetter: (key: string) => Promise<string>;
-    startNewGame: (id: string, wordLength?: number) => Promise<void>;
+    guessLetter: (key: string) => string;
+    startNewGame: (id: string, wordLength?: number) => void;
     wrongLetters: Set<string>;
-    reset: () => void;
     getPlayerName: (socketId: string) => string;
     addOrUpdatePlayer: (socketId: string, userName: string) => void;
     removePlayer: (socketId: string) => void;
