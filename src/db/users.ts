@@ -3,6 +3,23 @@
  */
 
 import DataBase from './db.ts';
+import bcrypt from 'bcrypt';
+
+type UserRecord = {
+    id: number;
+    username: string;
+    wins: number;
+};
+
+type StoredUserRecord = UserRecord & {
+    password_hash: string;
+};
+
+const SALT_ROUNDS = 10;
+
+function normalizeCredential(value: string) {
+    return value.trim();
+}
 
 // Get the win count for a user by username
 export async function getPlayerWins(userName: string): Promise<number> {
@@ -15,17 +32,66 @@ export async function getPlayerWins(userName: string): Promise<number> {
     }
 }
 
-// Look up a user by username, creating them if they don't exist
-export async function findOrCreateUser(userName: string, passwordHash: string): Promise<{ id: number; username: string; wins: number }> {
+// Create a new user with password hashing
+export async function createUser(username: string, password: string): Promise<UserRecord> {
     try {
-        let row = await DataBase.get<{ id: number; username: string; wins: number }>('SELECT id, username, wins FROM users WHERE username = ?', [userName]);
-        if (!row) {
-            const result = await DataBase.run('INSERT INTO users (username, password_hash) VALUES (?, ?)', [userName, passwordHash]);
-            row = { id: result.lastID || 0, username: userName, wins: 0 };
+        const normalizedUserName = normalizeCredential(username);
+        const normalizedPassword = normalizeCredential(password);
+        if (!normalizedUserName || !normalizedPassword) {
+            throw new Error('Username and password are required');
         }
-        return row || { id: 0, username: userName, wins: 0 };
+
+        const hashedPassword = await bcrypt.hash(normalizedPassword, SALT_ROUNDS);
+        
+        const result = await DataBase.run(
+            'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+            [normalizedUserName, hashedPassword]
+        );
+        
+        return {
+            id: result.lastID || 0,
+            username: normalizedUserName,
+            wins: 0
+        };
     } catch (error) {
-        console.error('Error finding or creating user:', error);
+        if (error instanceof Error && /unique/i.test(error.message)) {
+            throw new Error('Username already exists');
+        }
+        console.error('Error creating user:', error);
+        throw error;
+    }
+}
+
+// Verify user credentials for login
+export async function verifyPassword(username: string, password: string): Promise<UserRecord | null> {
+    try {
+        const normalizedUserName = normalizeCredential(username);
+        const normalizedPassword = normalizeCredential(password);
+        if (!normalizedUserName || !normalizedPassword) {
+            return null;
+        }
+
+        const row = await DataBase.get<StoredUserRecord>(
+            'SELECT id, username, wins, password_hash FROM users WHERE username = ?',
+            [normalizedUserName]
+        );
+        
+        if (!row) {
+            return null;
+        }
+        
+        const passwordMatches = await bcrypt.compare(normalizedPassword, row.password_hash);
+        if (!passwordMatches) {
+            return null;
+        }
+        
+        return {
+            id: row.id,
+            username: row.username,
+            wins: row.wins
+        };
+    } catch (error) {
+        console.error('Error verifying password:', error);
         throw error;
     }
 }

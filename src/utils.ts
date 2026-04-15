@@ -3,8 +3,7 @@
  */
 
 import { getPlayerWins } from "./db/db.ts";
-import { GameSession } from "./types.ts";
-import { findOrCreateUser } from "./db/db.ts";
+import type { GameSession } from "./types.ts";
 import { nanoid } from "nanoid";
 
 function createPayload(manager: GameSession['manager'], overrides?: { maskedWord?: string; attemptsLeft?: number }) {
@@ -32,11 +31,6 @@ function createPayload(manager: GameSession['manager'], overrides?: { maskedWord
 }
 
 async function getConnectedPlayers(game: GameSession) {
-    for (const player of game.manager.players) {
-        await findOrCreateUser(player.userName).catch((error) => {
-            console.error('Error ensuring user exists in database:', error);
-        });
-    }
     return Promise.all(
         Array.from(game.manager.players).map(async (player) => ({
             socketId: player.socketId,

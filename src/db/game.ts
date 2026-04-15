@@ -4,7 +4,7 @@
 
 import DataBase from './db.ts';
 import type { GameState } from '../types.ts';
-import { findOrCreateUser, incrementPlayerWins } from './users.ts';
+import { incrementPlayerWins } from './users.ts';
 import { clearChatMessages } from './chat.ts';
 
 // Create a new game
@@ -21,10 +21,7 @@ export async function saveGameState(gameState: GameState) {
     try {
         if (gameState.gameWon) {
             await DataBase.run('UPDATE games SET winner_id = ?, word = ? WHERE game_id = ?', [gameState.winnerId, gameState.word, gameState.gameId]);
-            const user = await findOrCreateUser(gameState.getPlayerName(gameState.winnerId!));
-            if (user) {
-                await incrementPlayerWins(user.username);
-            }
+            await incrementPlayerWins(gameState.getPlayerName(gameState.winnerId!));
             await clearChatMessages(gameState.gameId);
             return true;
         } else if (gameState.word && !gameState.winnerId) {

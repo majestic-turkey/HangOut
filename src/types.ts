@@ -1,4 +1,4 @@
-import SocketIO from 'socket.io';
+export type AuthAction = 'guest' | 'login' | 'register';
 
 export interface GameState {
     word: string;
@@ -44,9 +44,11 @@ export interface Payload {
     attemptsLeft: number;
     gameState: GameState;
     wordLength?: number;
+    maxAttempts?: number;
     userName?: string;
     gameId?: string;
     password?: string;
+    authAction?: AuthAction;
 }
 
 export interface Ack {
