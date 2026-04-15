@@ -46,6 +46,7 @@ export interface Payload {
     wordLength?: number;
     userName?: string;
     gameId?: string;
+    password?: string;
 }
 
 export interface Ack {

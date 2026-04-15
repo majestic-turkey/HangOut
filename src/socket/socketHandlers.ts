@@ -51,7 +51,7 @@ export function setupSocketHandlers(io: Server) {
                 await gameManager.startNewGame(gameId, wordLength);
 
                 // Create a user for the player starting the game (or find them if they already exist)
-                const passwordHash = await bcrypt.hash('defaultPassword', 10);
+                const passwordHash = await bcrypt.hash(payload?.password, 10);
                 await findOrCreateUser(userName, passwordHash);
 
                 // Add game to registry of games
@@ -80,17 +80,20 @@ export function setupSocketHandlers(io: Server) {
 
         // Listen for join game requests from clients
         socket.on('join_game', async (payload: Payload, ack: ((response: Ack) => void) | undefined) => {
-            const { gameId, userName } = payload;
+            const { gameId, userName, password } = payload;
             console.log(`User ${userName} (${socket.id}) is trying to join game ${gameId}`);
             const game = findGameById(typeof gameId === 'string' ? gameId : undefined, games);
             if (!game) return ack?.({ ok: false, message: "Game not found" });
 
+            // Join the socket to the game room and save the game ID and username in the socket's data for later reference
             await socket.join(game.id);
             socket.data.gameId = game.id;
             const normalizedUserName = typeof userName === 'string' && userName.trim() ? userName.trim() : 'Guest';
             socket.data.userName = normalizedUserName;
             game.manager.addOrUpdatePlayer(socket.id, normalizedUserName);
-            const passwordHash = await bcrypt.hash('defaultPassword', 10);
+
+            // Create a user for the player joining the game (or find them if they already exist)
+            const passwordHash = await bcrypt.hash(password, 10);
             await findOrCreateUser(normalizedUserName, passwordHash);
 
             // Add the player to the game and send them the current masked word and chat
