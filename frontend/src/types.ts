@@ -10,6 +10,8 @@ export interface GameState {
     attemptsLeft: number;
 }
 
+export type AuthAction = 'guest' | 'login' | 'register';
+
 export interface KeyboardProps {
     state: GameState;
 }

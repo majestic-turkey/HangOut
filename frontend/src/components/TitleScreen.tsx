@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { socket } from '../socket'
+import type { AuthAction } from '../types'
 
 export default function TitleScreen({ onGameInitiated }: { onGameInitiated: () => void }) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [authAction, setAuthAction] = useState<AuthAction>('guest')
+  const [password, setPassword] = useState('')
 
   const handleStartGame = () => {
     const wordLengthInput = document.getElementById('word-length') as HTMLInputElement;
@@ -14,10 +17,22 @@ export default function TitleScreen({ onGameInitiated }: { onGameInitiated: () =
 
     // If a game ID is provided, attempt to join that game. Otherwise, start a new game with the specified word length and max attempts.
     const userNameInput = document.getElementById('user-name') as HTMLInputElement;
-    const userName = userNameInput?.value ? userNameInput.value : 'Guest';
+    const userName = userNameInput?.value?.trim() ?? '';
+    const requiresCredentials = authAction !== 'guest'
+
+    if (requiresCredentials && (!userName || !password.trim())) {
+      setStatusMessage('Username and password are required')
+      return
+    }
+
+    const payload = {
+      userName: userName || 'Guest',
+      authAction,
+      password: requiresCredentials ? password.trim() : undefined,
+    }
 
     if (gameId) {
-      socket.emit('join_game', { gameId, userName }, (response?: { ok?: boolean; message?: string }) => {
+      socket.emit('join_game', { gameId, ...payload }, (response?: { ok?: boolean; message?: string }) => {
         if (!response?.ok) {
           setStatusMessage(response?.message ?? 'Unable to join game')
           return
@@ -27,7 +42,7 @@ export default function TitleScreen({ onGameInitiated }: { onGameInitiated: () =
       });
     } else {
       setStatusMessage(null)
-      socket.emit('new_game', { wordLength, maxAttempts, userName }, (response?: { ok?: boolean; message?: string }) => {
+      socket.emit('new_game', { wordLength, maxAttempts, ...payload }, (response?: { ok?: boolean; message?: string }) => {
         if (!response?.ok) {
           setStatusMessage(response?.message ?? 'Unable to start game')
           return
@@ -40,10 +55,24 @@ export default function TitleScreen({ onGameInitiated }: { onGameInitiated: () =
   return (
     <div className="title-screen">
       <h2>Start Or Join A Room</h2>
+      <label className="form-field" htmlFor="auth-action">
+      <span>Play Mode</span>
+      <select id="auth-action" name="auth-action" value={authAction} onChange={(event) => setAuthAction(event.target.value as AuthAction)}>
+        <option value="guest">Guest</option>
+        <option value="login">Login</option>
+        <option value="register">Register</option>
+      </select>
+      </label>
       <label className="form-field" htmlFor="user-name">
       <span>Username</span>
       <input id="user-name" name="user-name" type="text" placeholder="Enter a username" autoCapitalize="off" autoCorrect="off" spellCheck={false} />
       </label>
+      {authAction !== 'guest' ? (
+      <label className="form-field" htmlFor="password">
+      <span>Password</span>
+      <input id="password" name="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter a password" autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+      </label>
+      ) : null}
       <label className="form-field" htmlFor="word-length">
       <span>Word Length</span>
       <input id="word-length" name="word-length" type="number" min="5" max="12" placeholder="6" />

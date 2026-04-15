@@ -17,7 +17,6 @@ import {
     clearChatMessages,
     saveGameState,
     deleteOldGames,
-    findOrCreateUser,
     createGame
 } from '../db/db.ts';
 
@@ -30,18 +29,24 @@ const MAX_CHAT_LENGTH = 200; // Maximum length for chat messages to prevent abus
 // Initialize game registry
 const games = new Map<string, GameSession>();
 
+function normalizeUserName(value: unknown) {
+    return typeof value === 'string' && value.trim() ? value.trim() : 'Guest';
+}
+
 // On client connection
 export function setupSocketHandlers(io: Server) {
     io.on('connection', async (socket: SocketIO.Socket) => {
         console.log('A user connected:', socket.id);
 
         // Listen for new game requests from clients
-        socket.on('new_game', async (payload: Payload, maxAttempts = 6) => {
+        socket.on('new_game', async (payload: Payload, ack: ((response: Ack) => void) | undefined) => {
             const wordLength = Number.isInteger(payload?.wordLength) ? payload.wordLength : 6;
-            const requestedMaxAttempts = Number.isInteger(maxAttempts) ? maxAttempts : 6;
-            const userName = typeof payload?.userName === 'string' && payload.userName.trim() ? payload.userName.trim() : 'Guest';
-            console.log(`New game started by ${userName} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
+            const requestedMaxAttempts = typeof payload?.maxAttempts === 'number' && Number.isInteger(payload.maxAttempts)
+                ? payload.maxAttempts
+                : 6;
             try {
+                const userName = normalizeUserName(payload?.userName);
+                console.log(`New game started by ${userName} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
 
                 // Initialize a new game
                 let gameId = createGameId();
@@ -50,9 +55,7 @@ export function setupSocketHandlers(io: Server) {
                     console.warn(`Game ID collision detected: ${gameId}. Generating a new ID.`);
                     gameId = createGameId();
                 }
-                gameManager.startNewGame(gameId, wordLength);
-                await createGame(gameManager.word, gameManager.gameId);
-                await findOrCreateUser(userName);
+                await gameManager.startNewGame(gameId, wordLength);
 
                 // Add game to registry of games
                 const gameSession: GameSession = {
@@ -67,14 +70,17 @@ export function setupSocketHandlers(io: Server) {
                 await socket.join(gameId);
                 socket.data.gameId = gameId;
                 socket.data.userName = userName;
+                socket.data.userId = socket.request.session?.userId;
                 gameManager.addOrUpdatePlayer(socket.id, userName);
 
                 // And finally emit the initial masked word to the clients
                 io.to(gameId).emit("masked_word", createPayload(gameManager));
                 emitPlayerList(gameSession, io);
+                ack?.({ ok: true, message: 'Game started successfully' });
 
             } catch (error) {
                 console.error('Error starting new game:', error);
+                ack?.({ ok: false, message: error instanceof Error ? error.message : 'Unable to start game' });
             }
         });
 
@@ -85,12 +91,13 @@ export function setupSocketHandlers(io: Server) {
             const game = findGameById(typeof gameId === 'string' ? gameId : undefined, games);
             if (!game) return ack?.({ ok: false, message: "Game not found" });
 
+            // Join the socket to the game room and save the game ID and username in the socket's data for later reference
             await socket.join(game.id);
             socket.data.gameId = game.id;
-            const normalizedUserName = typeof userName === 'string' && userName.trim() ? userName.trim() : 'Guest';
+            const normalizedUserName = normalizeUserName(userName);
             socket.data.userName = normalizedUserName;
+            socket.data.userId = socket.request.session?.userId;
             game.manager.addOrUpdatePlayer(socket.id, normalizedUserName);
-            await findOrCreateUser(normalizedUserName);
 
             // Add the player to the game and send them the current masked word and chat
             game.players.add(socket.id);

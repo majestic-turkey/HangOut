@@ -4,7 +4,7 @@
 
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
-import { getPlayerWins, findOrCreateUser, incrementPlayerWins } from './users.ts';
+import { getPlayerWins, createUser, verifyPassword, incrementPlayerWins } from './users.ts';
 import { clearChatMessages, fetchChatMessages, addChatMessage } from './chat.ts';
 import { createGame, saveGameState, deleteOldGames } from './game.ts';
 
@@ -23,7 +23,8 @@ export default DataBase;
 // Re-export database functions for easier imports in other modules
 export {
     getPlayerWins,
-    findOrCreateUser,
+    createUser,
+    verifyPassword,
     incrementPlayerWins,
     clearChatMessages,
     fetchChatMessages,
@@ -51,6 +52,7 @@ export async function initDB() {
         await DataBase.exec(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
         wins INTEGER DEFAULT 0
     )`);
 

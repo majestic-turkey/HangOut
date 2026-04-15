@@ -2,6 +2,7 @@
  * Utility functions for the HangOut game server
  */
 
+import { getPlayerWins } from "./db/db.ts";
 import type { GameSession } from "./types.ts";
 import { nanoid } from "nanoid";
 import { getConnectedPlayers } from "./services/playerService.ts";

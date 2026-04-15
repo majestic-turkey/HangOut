@@ -9,16 +9,113 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 
-// Helpers
-import DataBase, { initDB } from './src/db/db.ts';
-import { setupSocketHandlers} from './src/socket/socketHandlers.ts';
+// Helpers and Middleware
+import { initDB, createUser, verifyPassword } from './src/db/db.ts';
+import DataBase from './src/db/db.ts';
+import { setupSocketHandlers } from './src/socket/socketHandlers.ts';
+import session from 'express-session';
+
+declare module 'express-session' {
+    interface SessionData {
+        userId?: number;
+    }
+}
+
+declare module 'http' {
+    interface IncomingMessage {
+        session: import('express-session').Session & import('express-session').SessionData;
+    }
+}
 
 // Load environment variables from .env file and set constants
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const SESSION_SECRET: string = process.env.SESSION_SECRET || 'default_secret';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, 'frontend', 'dist');
+const sessionConfig = 
+    session({
+        secret: SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: false,
+            maxAge: 1000 * 60 * 60 // 1 hour session duration
+        }
+    });
+
+// Create Express app and initialize middleware
 const app = express();
+app.use(sessionConfig);
+app.use(express.static(distPath)); // Serve static files from the frontend build directory
+
+// API route for user authentication (login, register)
+app.post('/auth', express.json(), async (req, res) => {
+    const { username, password, authAction } = req.body;
+    try {
+        // Login logic: verify credentials and create session
+        if (authAction === 'login') {
+            try {
+            const userRecord = await verifyPassword(username, password);
+            if (userRecord) {
+                req.session.regenerate((err) => {
+                    if (err) {
+                        res.status(500).json({ ok: false, message: 'Internal server error' });
+                    } else {
+                        req.session.userId = userRecord.id;
+                        res.json({ ok: true, message: 'Login successful', userId: userRecord.id });
+                    }
+                });
+            } else {
+                res.status(401).json({ ok: false, message: 'Invalid username or password' });
+            }
+        } catch (error) {
+            if (error instanceof Error && /invalid/i.test(error.message)) {
+                res.status(401).json({ ok: false, message: error.message });
+            } else {
+                res.status(500).json({ ok: false, message: 'Internal server error' });
+            }
+        }
+        } else if (authAction === 'register') {
+            // Registration logic: create new user and create session
+            try {
+                const newUser = await createUser(username, password);
+                req.session.regenerate((err) => {
+                    if (err) {
+                        res.status(500).json({ ok: false, message: err.message || 'Internal server error' });
+                    } else {
+                        req.session.userId = newUser.id;
+                        res.json({ ok: true, message: 'Registration successful', userId: newUser.id });
+                    }
+                });
+            } catch (error) {
+                if (error instanceof Error && /already exists/i.test(error.message)) {
+                    res.status(409).json({ ok: false, message: error.message });
+                } else {
+                    res.status(500).json({ ok: false, message: 'Internal server error' });
+                }
+            }
+        } else {
+            res.status(400).json({ ok: false, message: 'Invalid authentication action' });
+        }
+    } catch (error) {
+        console.error('Authentication error:', error);
+        res.status(500).json({ ok: false, message: 'Internal server error' });
+    }
+});
+
+// Check for session userID
+app.get('/me', (req, res) => {
+    if (req.session.userId) {
+        res.json({ userId: req.session.userId });
+    } else {
+        res.status(401).json({ error: 'User not authenticated' });
+    }
+});
+
+// Create HTTP server and initialize Socket.IO with CORS and connection recovery options
 const server = http.createServer(app);
 export const io = new Server(server, {
     cors: {
@@ -26,14 +123,18 @@ export const io = new Server(server, {
     },
     connectionStateRecovery: {
         maxDisconnectionDuration: 60000, // Allow reconnection within 60 seconds
-        skipMiddlewares: true // Skip any middlewares when recovering a connection
     }
 });
 
-setupSocketHandlers(io);
+// Add socket middleware to expose session data
+io.use((socket, next) => {
+    sessionConfig(socket.request as any, {} as any, (err?: unknown) => {
+        if (err) next(err instanceof Error ? err : new Error(String(err)));
+        else next();
+    });
+});
 
-// Serve static elements
-app.use(express.static(distPath));
+setupSocketHandlers(io);
 
 // Initialize the database
 await initDB();
@@ -42,6 +143,18 @@ await initDB();
 app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
 });
+
+// Logout
+app.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            res.status(500).json({ ok: false, message: 'Internal server error' });
+        } else {
+            res.json({ ok: true, message: 'Logout successful' });
+        }    
+    });
+});
+
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT || 3000}`);

@@ -389,7 +389,13 @@
   color: var(--text-h);
 }
 
-.word-display, .wrong-letters {
+.wrong-letters {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+}
+
+.word-display {
   font-family: 'Courier New', Courier, monospace;
   font-size: 22px;
   letter-spacing: 0.1em;

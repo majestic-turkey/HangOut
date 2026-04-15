@@ -4,6 +4,7 @@ import { socket } from './socket'
 import type { GameState } from './types.ts'
 import TitleScreen from './components/TitleScreen'
 import GameBoard from './components/GameBoard'
+import AuthModal from './components/AuthModal'
 
 function App(): React.ReactElement {
   // Use state to manage the game state
@@ -12,6 +13,8 @@ function App(): React.ReactElement {
   const [flashPulseId, setFlashPulseId] = React.useState(0)
   const [connected, setConnected] = React.useState(false)
   const [showConnectionModal, setShowConnectionModal] = React.useState(false)
+  const [userId, setUserId] = React.useState<number | null | undefined>(undefined)
+  const [authAction, setAuthAction] = React.useState<'guest' | 'login' | 'register'>('login')
 
   // Game state logging
   React.useEffect(() => {
@@ -35,6 +38,16 @@ function App(): React.ReactElement {
       socket.off('disconnect');
     };
   }, []);
+
+  // Call GET /me on initial load to rehydrate session if available
+  React.useEffect(() => {
+    fetch('/me')
+      .then((res) => res.json())
+      .then((json) => {
+        setUserId(json.userId ?? undefined);
+      })
+      .catch(() => setUserId(undefined));
+  }, [])
 
   // Display the connection modal for 2 seconds, display whether we're connected or not
   React.useEffect(() => {
@@ -131,15 +144,34 @@ function App(): React.ReactElement {
     }
   }, [])
 
+  function handleLogout() {
+    fetch('/logout', { method: 'POST' })
+      .then((res) => res.json())
+      .then(() => {
+        setUserId(undefined);
+        setAuthAction('login');
+        setGameState(null);
+      })
+      .catch(() => {
+        // Even if logout fails, clear the user ID on the client side to avoid confusion
+        setUserId(undefined);
+        setAuthAction('login');
+      });
+  }
+
   return (
     <div className="app-shell">
       {connectionModal}
       <h1 className="app-title">Hang Out!</h1>
       <div className="game-container">
-        {gameState === null && <TitleScreen onGameInitiated={() => setShowConnectionModal(true)} />}
+        {userId === undefined && <AuthModal authAction={authAction} onSuccess={(id) => setUserId(id)} />}
+        {gameState === null &&
+         userId !== undefined &&
+          <TitleScreen onGameInitiated={() => setShowConnectionModal(true)} />}
         {gameState && <GameBoard state={gameState} flashLetter={flashLetter} flashPulseId={flashPulseId} />}
         {gameState?.gameId ? <p className="game-id">Game ID: {gameState.gameId}</p> : null}
       </div>
+      {userId !== undefined && <button className="logout-button" onClick={handleLogout}>Logout</button>}
     </div>
   )
 }

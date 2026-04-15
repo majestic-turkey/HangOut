@@ -1,3 +1,7 @@
+import express from 'express';
+
+export type AuthAction = 'guest' | 'login' | 'register';
+
 export interface GameState {
     word: string;
     guessedLetters: Set<string>;
@@ -29,25 +33,26 @@ export interface Player {
     userName: string;
 }
 
+export interface User {
+    id: string;
+    username: string;
+    passwordHash: string;
+    wins: number;
+}
+
 export interface Payload {
     maskedWord: string;
     attemptsLeft: number;
     gameState: GameState;
     wordLength?: number;
+    maxAttempts?: number;
     userName?: string;
     gameId?: string;
+    password?: string;
+    authAction?: AuthAction;
 }
 
 export interface Ack {
     ok: boolean;
     message: string;
-}
-
-export interface SaveStateProps {
-    playerName?: string;
-    gameId: string;
-    winnerId?: string;
-    word: string;
-    gameWon: boolean;
-    game?: GameState;
 }
