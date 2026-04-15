@@ -144,6 +144,17 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
 });
 
+// Logout
+app.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            res.status(500).json({ ok: false, message: 'Internal server error' });
+        } else {
+            res.json({ ok: true, message: 'Logout successful' });
+        }    
+    });
+});
+
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT || 3000}`);

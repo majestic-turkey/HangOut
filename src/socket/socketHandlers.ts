@@ -17,8 +17,6 @@ import {
     clearChatMessages,
     saveGameState,
     deleteOldGames,
-    createUser,
-    verifyPassword,
     createGame
 } from '../db/db.ts';
 
@@ -35,36 +33,6 @@ function normalizeUserName(value: unknown) {
     return typeof value === 'string' && value.trim() ? value.trim() : 'Guest';
 }
 
-async function authenticatePlayer(payload: Payload) {
-    const authAction = payload?.authAction ?? 'guest';
-    const userName = normalizeUserName(payload?.userName);
-
-    if (authAction === 'guest') {
-        return { userName };
-    }
-
-    const password = typeof payload?.password === 'string' ? payload.password.trim() : '';
-    const hasExplicitUserName = typeof payload?.userName === 'string' && payload.userName.trim();
-    if (!hasExplicitUserName || !password) {
-        throw new Error('Username and password are required');
-    }
-
-    if (authAction === 'register') {
-        const user = await createUser(userName, password);
-        return { userName: user.username, userId: user.id };
-    }
-
-    if (authAction === 'login') {
-        const user = await verifyPassword(userName, password);
-        if (!user) {
-            throw new Error('Invalid username or password');
-        }
-        return { userName: user.username, userId: user.id };
-    }
-
-    throw new Error('Unsupported auth action');
-}
-
 // On client connection
 export function setupSocketHandlers(io: Server) {
     io.on('connection', async (socket: SocketIO.Socket) => {
@@ -77,8 +45,7 @@ export function setupSocketHandlers(io: Server) {
                 ? payload.maxAttempts
                 : 6;
             try {
-                const authResult = await authenticatePlayer(payload);
-                const userName = authResult.userName;
+                const userName = normalizeUserName(payload?.userName);
                 console.log(`New game started by ${userName} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
 
                 // Initialize a new game
@@ -103,7 +70,7 @@ export function setupSocketHandlers(io: Server) {
                 await socket.join(gameId);
                 socket.data.gameId = gameId;
                 socket.data.userName = userName;
-                socket.data.userId = authResult.userId;
+                socket.data.userId = socket.request.session?.userId;
                 gameManager.addOrUpdatePlayer(socket.id, userName);
 
                 // And finally emit the initial masked word to the clients
@@ -119,24 +86,17 @@ export function setupSocketHandlers(io: Server) {
 
         // Listen for join game requests from clients
         socket.on('join_game', async (payload: Payload, ack: ((response: Ack) => void) | undefined) => {
-            const { gameId, userName, password } = payload;
+            const { gameId, userName } = payload;
             console.log(`User ${userName} (${socket.id}) is trying to join game ${gameId}`);
             const game = findGameById(typeof gameId === 'string' ? gameId : undefined, games);
             if (!game) return ack?.({ ok: false, message: "Game not found" });
 
-            let authResult: { userName: string; userId?: number };
-            try {
-                authResult = await authenticatePlayer(payload);
-            } catch (error) {
-                return ack?.({ ok: false, message: error instanceof Error ? error.message : 'Unable to join game' });
-            }
-
             // Join the socket to the game room and save the game ID and username in the socket's data for later reference
             await socket.join(game.id);
             socket.data.gameId = game.id;
-            const normalizedUserName = authResult.userName;
+            const normalizedUserName = normalizeUserName(userName);
             socket.data.userName = normalizedUserName;
-            socket.data.userId = authResult.userId;
+            socket.data.userId = socket.request.session?.userId;
             game.manager.addOrUpdatePlayer(socket.id, normalizedUserName);
 
             // Add the player to the game and send them the current masked word and chat
