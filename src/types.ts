@@ -1,3 +1,5 @@
+import express from 'express';
+
 export type AuthAction = 'guest' | 'login' | 'register';
 
 export interface GameState {
