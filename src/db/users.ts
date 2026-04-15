@@ -16,11 +16,11 @@ export async function getPlayerWins(userName: string): Promise<number> {
 }
 
 // Look up a user by username, creating them if they don't exist
-export async function findOrCreateUser(userName: string): Promise<{ id: number; username: string; wins: number }> {
+export async function findOrCreateUser(userName: string, passwordHash: string): Promise<{ id: number; username: string; wins: number }> {
     try {
         let row = await DataBase.get<{ id: number; username: string; wins: number }>('SELECT id, username, wins FROM users WHERE username = ?', [userName]);
         if (!row) {
-            const result = await DataBase.run('INSERT INTO users (username) VALUES (?)', [userName]);
+            const result = await DataBase.run('INSERT INTO users (username, password_hash) VALUES (?, ?)', [userName, passwordHash]);
             row = { id: result.lastID || 0, username: userName, wins: 0 };
         }
         return row || { id: 0, username: userName, wins: 0 };

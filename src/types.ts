@@ -32,6 +32,13 @@ export interface Player {
     userName: string;
 }
 
+export interface User {
+    id: string;
+    username: string;
+    passwordHash: string;
+    wins: number;
+}
+
 export interface Payload {
     maskedWord: string;
     attemptsLeft: number;

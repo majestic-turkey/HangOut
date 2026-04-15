@@ -29,6 +29,7 @@
         "dev:all": "npx concurrently -n server,client -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\""
     },
     "dependencies": {
+        "bcrypt": "^6.0.0",
         "dotenv": "^17.4.1",
         "express": "^4.22.1",
         "nanoid": "^5.1.7",

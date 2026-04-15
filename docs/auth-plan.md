@@ -2,7 +2,7 @@
 
 ## MVP
 - [ ] Implement username/password authentication system
-  - [ ] Create user model in `src/db/db.ts`
+  - [X] Create user model in `src/db/db.ts`
   - [ ] Set up password hashing and validation
   - [ ] Configure cookie-based sessions
   - [ ] Integrate sessions into existing middleware

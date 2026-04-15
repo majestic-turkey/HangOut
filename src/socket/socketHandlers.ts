@@ -23,6 +23,7 @@ import {
 import GameManager from '../gameManager.ts';
 import { Server } from 'socket.io';
 import SocketIO from 'socket.io';
+const bcrypt = require('bcrypt');
 
 // Initialize game registry
 const games = new Map<string, GameSession>();
@@ -48,7 +49,10 @@ export function setupSocketHandlers(io: Server) {
                     gameId = createGameId();
                 }
                 await gameManager.startNewGame(gameId, wordLength);
-                await findOrCreateUser(userName);
+
+                // Create a user for the player starting the game (or find them if they already exist)
+                const passwordHash = await bcrypt.hash('defaultPassword', 10);
+                await findOrCreateUser(userName, passwordHash);
 
                 // Add game to registry of games
                 const gameSession: GameSession = {
@@ -86,7 +90,8 @@ export function setupSocketHandlers(io: Server) {
             const normalizedUserName = typeof userName === 'string' && userName.trim() ? userName.trim() : 'Guest';
             socket.data.userName = normalizedUserName;
             game.manager.addOrUpdatePlayer(socket.id, normalizedUserName);
-            await findOrCreateUser(normalizedUserName);
+            const passwordHash = await bcrypt.hash('defaultPassword', 10);
+            await findOrCreateUser(normalizedUserName, passwordHash);
 
             // Add the player to the game and send them the current masked word and chat
             game.players.add(socket.id);
