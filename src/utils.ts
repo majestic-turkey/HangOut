@@ -31,16 +31,6 @@ function createPayload(manager: GameSession['manager'], overrides?: { maskedWord
     };
 }
 
-async function getConnectedPlayers(game: GameSession) {
-    return Promise.all(
-        Array.from(game.manager.players).map(async (player) => ({
-            socketId: player.socketId,
-            userName: player.userName,
-            wins: await getPlayerWins(player.userName)
-        }))
-    );
-}
-
 async function emitPlayerList(game: GameSession, io: any) {
     io.to(game.id).emit('player_list', await getConnectedPlayers(game));
 }

@@ -18,7 +18,8 @@ import {
     saveGameState,
     deleteOldGames,
     createUser,
-    verifyPassword
+    verifyPassword,
+    createGame
 } from '../db/db.ts';
 
 import GameManager from '../gameManager.ts';
