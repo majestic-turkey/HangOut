@@ -25,7 +25,7 @@
   background: var(--code-bg);
   color: var(--text-h);
   cursor: pointer;
-  transition: transform 0.12s ease, border-color 0.2s ease, background 0.2s ease;
+  transition: transform 0.12s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 
   &:hover:not(:disabled) {
     border-color: var(--accent-border);
@@ -93,7 +93,7 @@
 
 .wrong-letters {
   margin-top: 6px;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--mono-classic);
   font-size: 13px;
   letter-spacing: 0.1em;
   color: var(--text);
@@ -201,7 +201,7 @@
 }
 
 .word-display {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--mono-classic);
   font-size: 22px;
   letter-spacing: 0.1em;
 }
@@ -232,11 +232,16 @@
   100% { transform: translateY(50px) rotate(-30deg); opacity: 0.35; }
 }
 
-.chat {
+.chat,
+.player-list,
+.chat-input {
   border: 1px solid var(--border);
-  background: var(--code-bg);
-  padding: 12px;
   border-radius: 6px;
+  background: var(--code-bg);
+}
+
+.chat {
+  padding: 12px;
   display: flex;
   flex-direction: column;
   height: 240px;
@@ -262,10 +267,7 @@
 }
 
 .player-list {
-  border: 1px solid var(--border);
-  border-radius: 6px;
   padding: 10px;
-  background-color: var(--code-bg);
   flex: 0 0 clamp(150px, 18%, 220px);
   text-align: left;
   overflow-y: auto;
@@ -299,9 +301,6 @@
 .chat-input {
   flex: 1 1 auto;
   min-width: 0;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--code-bg);
   color: var(--text-h);
   font-size: 14px;
   padding: 8px 10px;
