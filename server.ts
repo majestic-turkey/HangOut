@@ -29,7 +29,10 @@ declare module 'http' {
 
 // Load environment variables from .env file and set constants
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-const SESSION_SECRET: string = process.env.SESSION_SECRET || 'default_secret';
+if (!process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET environment variable is not set.');
+}
+const SESSION_SECRET: string = process.env.SESSION_SECRET;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, 'frontend', 'dist');
@@ -41,7 +44,7 @@ const sessionConfig =
         cookie: {
             httpOnly: true,
             sameSite: 'lax',
-            secure: false,
+            secure: process.env.NODE_ENV === 'production',
             maxAge: 1000 * 60 * 60 // 1 hour session duration
         }
     });
@@ -54,6 +57,11 @@ app.use(express.static(distPath)); // Serve static files from the frontend build
 // API route for user authentication (login, register)
 app.post('/auth', express.json(), async (req, res) => {
     const { username, password, authAction } = req.body;
+    // Validate input
+    const invalidInput = typeof username !== 'string' || typeof password !== 'string';
+    if (invalidInput) {
+        return res.status(400).json({ ok: false, message: 'Username and password must be strings' });
+    }
     try {
         // Login logic: verify credentials and create session
         if (authAction === 'login') {
@@ -139,11 +147,6 @@ setupSocketHandlers(io);
 // Initialize the database
 await initDB();
 
-// Serve the frontend application for all other routes
-app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-});
-
 // Logout
 app.post('/logout', (req, res) => {
     req.session.destroy((err) => {
@@ -154,6 +157,12 @@ app.post('/logout', (req, res) => {
         }    
     });
 });
+
+// Serve the frontend application for all other routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+});
+
 
 
 server.listen(PORT, '0.0.0.0', () => {
