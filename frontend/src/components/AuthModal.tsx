@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { SubmitEvent } from 'react';
 import type { AuthAction } from '../types';
 
 export default function AuthModal({ authAction, onSuccess }: { authAction: AuthAction, onSuccess: (userId: number | null) => void }) {
@@ -13,7 +13,7 @@ export default function AuthModal({ authAction, onSuccess }: { authAction: AuthA
     </>)
 
     // POST /auth on form submit with username, password, and authAction (login or register)
-    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const data = {
@@ -38,6 +38,7 @@ export default function AuthModal({ authAction, onSuccess }: { authAction: AuthA
         <form className="auth-modal" onSubmit={handleSubmit}>
             {(authAction === 'login' || authAction === 'register') && credentialFields}
             {statusMessage && <p className="title-status">{statusMessage}</p>}
+            <button type="submit" className={'auth-button'}>{authAction === 'login' ? 'Login' : 'Register'}</button>
         </form>
         <button className="guest-button" onClick={() => onSuccess(null)}>Continue as Guest</button>
     </>)
