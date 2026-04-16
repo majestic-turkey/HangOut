@@ -147,11 +147,6 @@ setupSocketHandlers(io);
 // Initialize the database
 await initDB();
 
-// Serve the frontend application for all other routes
-app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-});
-
 // Logout
 app.post('/logout', (req, res) => {
     req.session.destroy((err) => {
@@ -162,6 +157,12 @@ app.post('/logout', (req, res) => {
         }    
     });
 });
+
+// Serve the frontend application for all other routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+});
+
 
 
 server.listen(PORT, '0.0.0.0', () => {
