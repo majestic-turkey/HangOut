@@ -5,6 +5,7 @@
 import { getPlayerWins } from "./db/db.ts";
 import type { GameSession } from "./types.ts";
 import { nanoid } from "nanoid";
+import { getConnectedPlayers } from "./services/playerService.ts";
 
 function createPayload(manager: GameSession['manager'], overrides?: { maskedWord?: string; attemptsLeft?: number }) {
     const maskedWord = overrides?.maskedWord ?? manager.getMaskedWord();
@@ -28,16 +29,6 @@ function createPayload(manager: GameSession['manager'], overrides?: { maskedWord
             attemptsLeft
         }
     };
-}
-
-async function getConnectedPlayers(game: GameSession) {
-    return Promise.all(
-        Array.from(game.manager.players).map(async (player) => ({
-            socketId: player.socketId,
-            userName: player.userName,
-            wins: await getPlayerWins(player.userName)
-        }))
-    );
 }
 
 async function emitPlayerList(game: GameSession, io: any) {

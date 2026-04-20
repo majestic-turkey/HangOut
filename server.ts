@@ -21,6 +21,12 @@ declare module 'express-session' {
     }
 }
 
+declare module 'http' {
+    interface IncomingMessage {
+        session: import('express-session').Session & import('express-session').SessionData;
+    }
+}
+
 // Load environment variables from .env file and set constants
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const sessionSecret = process.env.SESSION_SECRET;
@@ -28,27 +34,36 @@ if (!sessionSecret || sessionSecret.trim() === '') {
     throw new Error('SESSION_SECRET environment variable must be set');
 }
 const SESSION_SECRET: string = sessionSecret;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, 'frontend', 'dist');
+const sessionConfig = 
+    session({
+        secret: SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 1000 * 60 * 60 // 1 hour session duration
+        }
+    });
 
 // Create Express app and initialize middleware
 const app = express();
-app.use(session({ // Session tracking
-    secret: SESSION_SECRET,
-    resave: false,
-    cookie: {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 1000 * 60 * 60 // 1 hour session duration
-    }
-}));
+app.use(sessionConfig);
 app.use(express.static(distPath)); // Serve static files from the frontend build directory
 
 // API route for user authentication (login, register)
 app.post('/auth', express.json(), async (req, res) => {
     const { username, password, authAction } = req.body;
+    // Validate input
+    const invalidInput = typeof username !== 'string' || typeof password !== 'string';
+    if (invalidInput) {
+        return res.status(400).json({ ok: false, message: 'Username and password must be strings' });
+    }
     try {
         // Login logic: verify credentials and create session
         if (authAction === 'login') {
@@ -118,8 +133,15 @@ export const io = new Server(server, {
     },
     connectionStateRecovery: {
         maxDisconnectionDuration: 60000, // Allow reconnection within 60 seconds
-        skipMiddlewares: true // Skip any middlewares when recovering a connection
     }
+});
+
+// Add socket middleware to expose session data
+io.use((socket, next) => {
+    sessionConfig(socket.request as any, {} as any, (err?: unknown) => {
+        if (err) next(err instanceof Error ? err : new Error(String(err)));
+        else next();
+    });
 });
 
 setupSocketHandlers(io);
@@ -127,10 +149,22 @@ setupSocketHandlers(io);
 // Initialize the database
 await initDB();
 
+// Logout
+app.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            res.status(500).json({ ok: false, message: 'Internal server error' });
+        } else {
+            res.json({ ok: true, message: 'Logout successful' });
+        }    
+    });
+});
+
 // Serve the frontend application for all other routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
 });
+
 
 
 server.listen(PORT, '0.0.0.0', () => {
@@ -138,8 +172,8 @@ server.listen(PORT, '0.0.0.0', () => {
 })
 
 // Gracefully handle server shutdown and close the database connection
-process.on('SIGINT', () => {
-    console.log('Received SIGINT. Shutting down server...');
+function shutdown() {
+    console.log('Shutting down server...');
     server.close(() => {
         console.log('Server closed');
         DataBase.close().then(() => {
@@ -148,4 +182,8 @@ process.on('SIGINT', () => {
             console.error('Error closing database connection:', error);
         });
     });
-});
+    process.exit(0);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

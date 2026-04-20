@@ -2,9 +2,8 @@
  * Manages game state and logic for the Hangman game
  */
 
-import { getRandomWord } from './wordService.ts';
+import { getRandomWord } from './services/wordService.ts';
 import type { GameState, Player } from './types.ts';
-import { saveGameState, createGame } from './db/db.ts';
 
 export default class GameManager implements GameState {
     word: string;                   // The word to be guessed
@@ -30,7 +29,7 @@ export default class GameManager implements GameState {
     }
 
     // Start a new game by fetching a random word and resetting the game state
-    async startNewGame(id: string, wordLength?: number): Promise<void> {
+    startNewGame(id: string, wordLength?: number): void {
         const randomWord = getRandomWord(wordLength);
         if (randomWord) {
             this.word = randomWord.toLowerCase();
@@ -41,21 +40,11 @@ export default class GameManager implements GameState {
             this.winnerId = undefined;
             this.gameId = id;
         }
-        await createGame(this.word, this.gameId);
     }
 
     // Mask the word by replacing unguessed letters with underscores
     getMaskedWord(): string {
         return this.word.split('').map((char) => (this.guessedLetters.has(char) ? char : '_')).join(' ');
-    }
-
-    // Get the current game state
-    getGameState(): GameState {
-        return {
-            ...this,
-            maskedWord: this.getMaskedWord(),
-            attemptsLeft: this.maxAttempts - this.attempts,
-        } as GameState;
     }
 
     // Retrieve a player name
@@ -75,19 +64,8 @@ export default class GameManager implements GameState {
         this.players = new Set(Array.from(this.players).filter((p) => p.socketId !== socketId));
     }
 
-    // Reset the game state to start a new game
-    reset(): void {
-        this.word = getRandomWord(this.word.length);
-        this.guessedLetters.clear();
-        this.wrongLetters.clear();
-        this.attempts = 0;
-        this.gameWon = false;
-        this.winnerId = undefined;
-        this.gameId += '-' + (Date.now() % 38); // Generate a new game ID by appending a timestamp
-    }
-
     // Process a letter guess, update game state accordingly, and return whether the guess was valid
-    async guessLetter(letter: string): Promise<string> {
+    guessLetter(letter: string): string {
         letter = letter.toLowerCase();
         if (this.guessedLetters.has(letter) || this.attempts >= this.maxAttempts) {
             return JSON.stringify({ accepted: false, message: "Invalid guess or game over" });
@@ -100,9 +78,6 @@ export default class GameManager implements GameState {
 
         // Check if the game has been won
         this.gameWon = this.word.split('').every((char) => this.guessedLetters.has(char));
-
-        // Save game state and return the result of the guess
-        await saveGameState(this);
 
         return JSON.stringify({
             accepted: true,

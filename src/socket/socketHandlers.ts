@@ -17,49 +17,20 @@ import {
     clearChatMessages,
     saveGameState,
     deleteOldGames,
-    createUser,
-    verifyPassword
+    createGame
 } from '../db/db.ts';
 
 import GameManager from '../gameManager.ts';
 import { Server } from 'socket.io';
 import type SocketIO from 'socket.io';
 
+const MAX_CHAT_LENGTH = 200; // Maximum length for chat messages to prevent abuse
+
 // Initialize game registry
 const games = new Map<string, GameSession>();
 
 function normalizeUserName(value: unknown) {
     return typeof value === 'string' && value.trim() ? value.trim() : 'Guest';
-}
-
-async function authenticatePlayer(payload: Payload) {
-    const authAction = payload?.authAction ?? 'guest';
-    const userName = normalizeUserName(payload?.userName);
-
-    if (authAction === 'guest') {
-        return { userName };
-    }
-
-    const password = typeof payload?.password === 'string' ? payload.password.trim() : '';
-    const hasExplicitUserName = typeof payload?.userName === 'string' && payload.userName.trim();
-    if (!hasExplicitUserName || !password) {
-        throw new Error('Username and password are required');
-    }
-
-    if (authAction === 'register') {
-        const user = await createUser(userName, password);
-        return { userName: user.username, userId: user.id };
-    }
-
-    if (authAction === 'login') {
-        const user = await verifyPassword(userName, password);
-        if (!user) {
-            throw new Error('Invalid username or password');
-        }
-        return { userName: user.username, userId: user.id };
-    }
-
-    throw new Error('Unsupported auth action');
 }
 
 // On client connection
@@ -74,8 +45,7 @@ export function setupSocketHandlers(io: Server) {
                 ? payload.maxAttempts
                 : 6;
             try {
-                const authResult = await authenticatePlayer(payload);
-                const userName = authResult.userName;
+                const userName = normalizeUserName(payload?.userName);
                 console.log(`New game started by ${userName} with word length ${wordLength} and max attempts ${requestedMaxAttempts}`);
 
                 // Initialize a new game
@@ -100,7 +70,7 @@ export function setupSocketHandlers(io: Server) {
                 await socket.join(gameId);
                 socket.data.gameId = gameId;
                 socket.data.userName = userName;
-                socket.data.userId = authResult.userId;
+                socket.data.userId = socket.request.session?.userId;
                 gameManager.addOrUpdatePlayer(socket.id, userName);
 
                 // And finally emit the initial masked word to the clients
@@ -116,24 +86,17 @@ export function setupSocketHandlers(io: Server) {
 
         // Listen for join game requests from clients
         socket.on('join_game', async (payload: Payload, ack: ((response: Ack) => void) | undefined) => {
-            const { gameId, userName, password } = payload;
+            const { gameId, userName } = payload;
             console.log(`User ${userName} (${socket.id}) is trying to join game ${gameId}`);
             const game = findGameById(typeof gameId === 'string' ? gameId : undefined, games);
             if (!game) return ack?.({ ok: false, message: "Game not found" });
 
-            let authResult: { userName: string; userId?: number };
-            try {
-                authResult = await authenticatePlayer(payload);
-            } catch (error) {
-                return ack?.({ ok: false, message: error instanceof Error ? error.message : 'Unable to join game' });
-            }
-
             // Join the socket to the game room and save the game ID and username in the socket's data for later reference
             await socket.join(game.id);
             socket.data.gameId = game.id;
-            const normalizedUserName = authResult.userName;
+            const normalizedUserName = normalizeUserName(userName);
             socket.data.userName = normalizedUserName;
-            socket.data.userId = authResult.userId;
+            socket.data.userId = socket.request.session?.userId;
             game.manager.addOrUpdatePlayer(socket.id, normalizedUserName);
 
             // Add the player to the game and send them the current masked word and chat
@@ -169,7 +132,8 @@ export function setupSocketHandlers(io: Server) {
 
             const nextWordLength = game.manager.word.length || undefined;
             try {
-                await game.manager.startNewGame(game.id, nextWordLength);
+                game.manager.startNewGame(game.id, nextWordLength);
+                await createGame(game.manager.word, game.manager.gameId);
             } catch (error) {
                 console.error('Error starting new game:', error);
                 return ack?.({ ok: false, message: 'Failed to start new game' });
@@ -203,11 +167,11 @@ export function setupSocketHandlers(io: Server) {
             }
 
             // Make the guess and update the game state
-            const changed = JSON.parse(await game.manager.guessLetter(key.toLowerCase().trim()));
+            const changed = JSON.parse(game.manager.guessLetter(key.toLowerCase().trim()));
             if (!changed.accepted) return; // If the guess was invalid, ignore it
-
+            
             console.log(`Game ${gameId}: Remaining attempts ${game.manager.maxAttempts - game.manager.attempts}`);
-
+            
             // Broadcast the updated game state to all players in the game
             io.to(gameId).emit("masked_word", {
                 ...changed,
@@ -225,10 +189,16 @@ export function setupSocketHandlers(io: Server) {
                     word: game.manager.word
                 });
                 game.manager.winnerId = game.manager.gameWon ? socket.id : undefined;
-                await saveGameState(game.manager);
                 await clearChatMessages(game.manager.gameId);
                 await deleteOldGames();
             }
+            await saveGameState({
+                gameId: game.manager.gameId,
+                winnerId: game.manager.winnerId,
+                word: game.manager.word,
+                gameWon: game.manager.gameWon,
+                game: game.manager
+            }); // Keep a record of the current game state to facilitate reconnections
         });
 
         // Listen for chat messages, save them to the database and broadcast
@@ -236,7 +206,7 @@ export function setupSocketHandlers(io: Server) {
             const gameId = socket.data.gameId;
             if (!gameId) return;
             const normalizedMessage = typeof message === 'string' ? message.trim() : '';
-            if (!normalizedMessage) return;
+            if (!normalizedMessage || normalizedMessage.length > MAX_CHAT_LENGTH) return;
             const game = games.get(gameId);
             const userName = typeof socket.data.userName === 'string' && socket.data.userName.trim()
                 ? socket.data.userName.trim()

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { socket } from '../socket'
 import type { AuthAction } from '../types'
 
-export default function TitleScreen() {
+export default function TitleScreen({ onGameInitiated }: { onGameInitiated: () => void }) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [authAction, setAuthAction] = useState<AuthAction>('guest')
   const [password, setPassword] = useState('')
@@ -38,6 +38,7 @@ export default function TitleScreen() {
           return
         }
         setStatusMessage('Joined game successfully')
+        onGameInitiated()
       });
     } else {
       setStatusMessage(null)
