@@ -52,10 +52,15 @@ export async function initDB() {
         await DataBase.exec(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
+        password_hash TEXT,
         wins INTEGER DEFAULT 0
     )`);
 
+        const userColumns = await DataBase.all('PRAGMA table_info(users)');
+        const hasPasswordHashColumn = userColumns.some((column: { name: string }) => column.name === 'password_hash');
+        if (!hasPasswordHashColumn) {
+            await DataBase.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+        }
         // Create chats table
         await DataBase.exec(`CREATE TABLE IF NOT EXISTS chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

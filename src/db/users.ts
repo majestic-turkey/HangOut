@@ -47,9 +47,13 @@ export async function createUser(username: string, password: string): Promise<Us
             'INSERT INTO users (username, password_hash) VALUES (?, ?)',
             [normalizedUserName, hashedPassword]
         );
+
+        if (typeof result.lastID !== 'number') {
+            throw new Error('Failed to create user: insert did not return a valid user ID');
+        }
         
         return {
-            id: result.lastID || 0,
+            id: result.lastID,
             username: normalizedUserName,
             wins: 0
         };

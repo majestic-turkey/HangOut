@@ -315,7 +315,8 @@
   color: var(--text-h);
 }
 
-.title-screen input {
+.title-screen input[type="text"],
+.title-screen input[type="password"] {
   padding: 8px 12px;
   border-radius: 6px;
   border: 1px solid var(--border);

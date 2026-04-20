@@ -23,7 +23,11 @@ declare module 'express-session' {
 
 // Load environment variables from .env file and set constants
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-const SESSION_SECRET: string = process.env.SESSION_SECRET || 'default_secret';
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret || sessionSecret.trim() === '') {
+    throw new Error('SESSION_SECRET environment variable must be set');
+}
+const SESSION_SECRET: string = sessionSecret;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, 'frontend', 'dist');
@@ -33,11 +37,10 @@ const app = express();
 app.use(session({ // Session tracking
     secret: SESSION_SECRET,
     resave: false,
-    saveUninitialized: false,
     cookie: {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
         maxAge: 1000 * 60 * 60 // 1 hour session duration
     }
 }));
@@ -50,26 +53,26 @@ app.post('/auth', express.json(), async (req, res) => {
         // Login logic: verify credentials and create session
         if (authAction === 'login') {
             try {
-            const userRecord = await verifyPassword(username, password);
-            if (userRecord) {
-                req.session.regenerate((err) => {
-                    if (err) {
-                        res.status(500).json({ ok: false, message: 'Internal server error' });
-                    } else {
-                        req.session.userId = userRecord.id;
-                        res.json({ ok: true, message: 'Login successful', userId: userRecord.id });
-                    }
-                });
-            } else {
-                res.status(401).json({ ok: false, message: 'Invalid username or password' });
+                const userRecord = await verifyPassword(username, password);
+                if (userRecord) {
+                    req.session.regenerate((err) => {
+                        if (err) {
+                            res.status(500).json({ ok: false, message: 'Internal server error' });
+                        } else {
+                            req.session.userId = userRecord.id;
+                            res.json({ ok: true, message: 'Login successful', userId: userRecord.id });
+                        }
+                    });
+                } else {
+                    res.status(401).json({ ok: false, message: 'Invalid username or password' });
+                }
+            } catch (error) {
+                if (error instanceof Error && /invalid/i.test(error.message)) {
+                    res.status(401).json({ ok: false, message: error.message });
+                } else {
+                    res.status(500).json({ ok: false, message: 'Internal server error' });
+                }
             }
-        } catch (error) {
-            if (error instanceof Error && /invalid/i.test(error.message)) {
-                res.status(401).json({ ok: false, message: error.message });
-            } else {
-                res.status(500).json({ ok: false, message: 'Internal server error' });
-            }
-        }
         } else if (authAction === 'register') {
             // Registration logic: create new user and create session
             try {
