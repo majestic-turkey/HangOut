@@ -52,6 +52,9 @@ const sessionConfig =
 
 // Create Express app and initialize middleware
 const app = express();
+
+app.set('trust proxy', 1);
+
 app.use(sessionConfig);
 app.use(express.static(distPath)); // Serve static files from the frontend build directory
 

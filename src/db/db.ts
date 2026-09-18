@@ -10,7 +10,7 @@ import { createGame, saveGameState, deleteOldGames } from './game.ts';
 
 async function openDB() {
     return open({
-        filename: './hangman.db',
+        filename: process.env.DB_PATH ?? './hangman.db',
         driver: sqlite3.Database
     });
 }
